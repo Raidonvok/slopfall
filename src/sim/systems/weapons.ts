@@ -76,15 +76,16 @@ function fireSword(s: GameState, p: Player, w: WeaponInst, st: WStats): void {
   w.cd = st.cd;
   const range = 95 * st.area;
   const base = aimAngle(p);
-  if (w.evolved) {
+  if (w.evo === 'holyblade') {
     arcHit(s, p, 'sword', range * 1.2, base, TAU, st);
     addZone(s, { owner: p.id, src: 'sword', kind: 'slash2', x: p.x, y: p.y, r: range * 1.2, ang: base, arc: TAU, life: 0.25 });
   } else {
     const n = Math.max(1, st.amount);
+    const kind = w.evo === 'bladedancer' ? 'slash3' : 'slash';
     for (let i = 0; i < n; i++) {
       const ang = base + (i * TAU) / n;
       arcHit(s, p, 'sword', range, ang, 2.1, st);
-      addZone(s, { owner: p.id, src: 'sword', kind: 'slash', x: p.x, y: p.y, r: range, ang, arc: 2.1, life: 0.18 });
+      addZone(s, { owner: p.id, src: 'sword', kind, x: p.x, y: p.y, r: range, ang, arc: 2.1, life: 0.18 });
     }
   }
   s.events.push({ t: 'sfx', name: 'swing' });
@@ -99,9 +100,10 @@ function fireBolt(s: GameState, p: Player, w: WeaponInst, st: WStats): void {
   for (let i = 0; i < st.amount; i++) {
     const a = a0 + (i - (st.amount - 1) / 2) * 0.3;
     addProjectile(s, {
-      owner: p.id, src: 'bolt', kind: w.evolved ? 'bolt2' : 'bolt', x: p.x, y: p.y,
+      owner: p.id, src: 'bolt', kind: w.evo === 'prism' ? 'prism' : w.evolved ? 'bolt2' : 'bolt', x: p.x, y: p.y,
       vx: Math.cos(a) * st.speed, vy: Math.sin(a) * st.speed, speed: st.speed,
-      dmg: st.dmg, radius: 7 * st.area, pierce: st.pierce, life: st.duration, knock: st.knock, homing: 7,
+      dmg: st.dmg, radius: 7 * st.area, pierce: st.pierce, life: st.duration, knock: st.knock,
+      homing: w.evo === 'prism' ? 1.5 : 7,
     });
   }
   s.events.push({ t: 'sfx', name: 'bolt' });
@@ -151,10 +153,11 @@ function fireAxe(s: GameState, p: Player, w: WeaponInst, st: WStats): void {
   if (w.cd > 0) return;
   w.cd = st.cd;
   const base = aimAngle(p);
+  const twin = w.evo === 'twinreavers';
   for (let i = 0; i < st.amount; i++) {
-    const a = base + (i - (st.amount - 1) / 2) * 0.35;
+    const a = twin ? base + (i * TAU) / st.amount : base + (i - (st.amount - 1) / 2) * 0.35;
     addProjectile(s, {
-      owner: p.id, src: 'axe', kind: w.evolved ? 'axe2' : 'axe', x: p.x, y: p.y,
+      owner: p.id, src: 'axe', kind: twin ? 'axe3' : w.evolved ? 'axe2' : 'axe', x: p.x, y: p.y,
       vx: Math.cos(a), vy: Math.sin(a), speed: st.speed, data: st.duration / 2,
       dmg: st.dmg, radius: 14 * st.area, pierce: 999, life: st.duration * 2 + 2, knock: st.knock, hitRate: 0.35,
     });
@@ -190,7 +193,14 @@ function updateAura(s: GameState, p: Player, w: WeaponInst, st: WStats): void {
 function fireNova(s: GameState, p: Player, w: WeaponInst, st: WStats): void {
   if (w.cd > 0) return;
   w.cd = st.cd;
-  for (let i = 0; i < st.amount; i++) {
+  if (w.evo === 'supernova') {
+    addZone(s, {
+      owner: p.id, src: 'nova', kind: 'nova3', x: p.x, y: p.y,
+      r: 170 * st.area, r0: 12, life: st.duration * 1.4, dmg: st.dmg, knock: st.knock,
+    });
+    s.events.push({ t: 'shake', v: 6 });
+  }
+  for (let i = 0; w.evo !== 'supernova' && i < st.amount; i++) {
     addZone(s, {
       owner: p.id, src: 'nova', kind: w.evolved ? 'nova2' : 'nova', x: p.x, y: p.y,
       r: 170 * st.area, r0: 12, life: st.duration, delay: i * 0.3, dmg: st.dmg, knock: st.knock,
@@ -235,6 +245,11 @@ function fireFrost(s: GameState, p: Player, w: WeaponInst, st: WStats): void {
 
 // ---------------------------------------------------------------------------
 
+/** Mortar shell explosion: a one-shot area zone (radius stored in `data`). */
+function detonate(s: GameState, pr: Projectile): void {
+  addZone(s, { owner: pr.owner, src: pr.src, kind: 'boom', x: pr.x, y: pr.y, r: pr.data, life: 0.05, dmg: pr.dmg, knock: 220 });
+}
+
 function steer(pr: Projectile, tx: number, ty: number, turn: number): void {
   const cur = Math.atan2(pr.vy, pr.vx);
   const want = Math.atan2(ty - pr.y, tx - pr.x);
@@ -252,6 +267,7 @@ export function updateProjectiles(s: GameState, dt: number): void {
     pr.life -= dt;
     if (pr.life <= 0) {
       pr.dead = true;
+      if (pr.kind === 'shell') detonate(s, pr);
       continue;
     }
     const owner = findPlayer(s, pr.owner);
@@ -316,6 +332,7 @@ export function updateProjectiles(s: GameState, dt: number): void {
         pr.pierce--;
         if (pr.pierce < 0) {
           pr.dead = true;
+          if (pr.kind === 'shell') detonate(s, pr);
           return true;
         }
       }
@@ -338,7 +355,7 @@ export function updateZones(s: GameState, dt: number): void {
     if (z.life <= 0) z.dead = true;
     const owner = findPlayer(s, z.owner);
     if (!owner || z.dmg <= 0) continue;
-    if (z.kind === 'nova' || z.kind === 'nova2') {
+    if (z.kind === 'nova' || z.kind === 'nova2' || z.kind === 'nova3') {
       const prog = 1 - Math.max(0, z.life) / z.maxLife;
       const cur = z.r0 + (z.r - z.r0) * prog;
       forEnemiesInCircle(z.x, z.y, cur, (e) => {
@@ -353,7 +370,9 @@ export function updateZones(s: GameState, dt: number): void {
         const dx = e.x - z.x, dy = e.y - z.y, d = Math.hypot(dx, dy) || 1;
         damageEnemy(s, e, z.dmg, owner, z.src, dx / d, dy / d, z.knock);
       });
-      if (z.kind === 'meteor') {
+      if (z.kind === 'boom') {
+        s.events.push({ t: 'explode', x: z.x, y: z.y, r: z.r, color: '#ffb347' });
+      } else if (z.kind === 'meteor') {
         s.events.push({ t: 'explode', x: z.x, y: z.y, r: z.r, color: '#ff7a1a' });
         s.events.push({ t: 'shake', v: 12 });
       } else if (z.kind === 'rain') {
@@ -377,15 +396,24 @@ export function updateTurrets(s: GameState, dt: number): void {
       continue;
     }
     const w = owner.weapons.find((x) => x.id === 'turret');
-    const st = w ? weaponStats(owner, w) : baseWeaponStats(WEAPONS.turret, 1, false);
+    const st = w ? weaponStats(owner, w) : baseWeaponStats(WEAPONS.turret, 1);
     t.cd -= dt * (isOverclocked(owner) ? 3 : 1);
     const target = nearestEnemy(s, t.x, t.y, 480);
     if (!target) continue;
     t.ang = Math.atan2(target.y - t.y, target.x - t.x);
     if (t.cd > 0) continue;
-    if (w?.evolved) {
+    if (w?.evo === 'tesla') {
       t.cd = 0.8;
       chainLightning(s, owner, 'turret', t.x, t.y, target, 3, 160, st.dmg);
+    } else if (w?.evo === 'mortar') {
+      t.cd = 1.2;
+      const d = Math.hypot(target.x - t.x, target.y - t.y);
+      const sp = 420;
+      addProjectile(s, {
+        owner: owner.id, src: 'turret', kind: 'shell', x: t.x, y: t.y,
+        vx: Math.cos(t.ang) * sp, vy: Math.sin(t.ang) * sp, speed: sp,
+        dmg: st.dmg, radius: 8, pierce: 0, life: Math.max(0.15, d / sp), data: 80 * st.area, knock: 0,
+      });
     } else {
       t.cd = 0.5;
       addProjectile(s, {

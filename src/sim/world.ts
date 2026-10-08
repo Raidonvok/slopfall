@@ -62,6 +62,7 @@ export function isFrozen(s: GameState): boolean {
   return s.cfg.pauseOnLevelUp && s.players.some((p) => !p.dead && p.choices !== null);
 }
 
+const WEB_SLOW = 0.55;
 const DASH_SPEED = 1050;
 const DASH_TIME = 0.18;
 
@@ -88,6 +89,7 @@ function updatePlayer(s: GameState, p: Player, cmd: InputCmd, dt: number): void 
   p.hurtT = Math.max(0, p.hurtT - dt);
   p.dashMaxCd = (p.charId === 'ranger' ? 1.8 : 2.6) * p.stats.cooldown;
   p.dashCd = Math.max(0, p.dashCd - dt);
+  p.slowT = Math.max(0, p.slowT - dt);
   if (cmd.dash && p.dashCd <= 0 && p.dashT <= 0) startDash(s, p, cmd);
   if (p.dashT > 0) {
     p.dashT -= dt;
@@ -100,8 +102,9 @@ function updatePlayer(s: GameState, p: Player, cmd: InputCmd, dt: number): void 
       mx /= l;
       my /= l;
     }
-    p.x += mx * p.stats.speed * dt;
-    p.y += my * p.stats.speed * dt;
+    const speed = p.stats.speed * (p.slowT > 0 ? WEB_SLOW : 1);
+    p.x += mx * speed * dt;
+    p.y += my * speed * dt;
     if (l > 0.1) {
       const fl = Math.hypot(mx, my);
       p.fx = mx / fl;

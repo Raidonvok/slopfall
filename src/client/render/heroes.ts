@@ -538,6 +538,20 @@ export function drawPlayer(ctx: Ctx, pl: Player, x: number, y: number, t: number
   const walk = moving ? t * 14 : 0;
   drawCharacterBody(ctx, pl.charId, x, y, r, ex, ey, t, walk, pl.hurtT > 0.12);
 
+  if (pl.slowT > 0) {
+    // stuck in a web
+    ctx.strokeStyle = 'rgba(235,235,245,0.75)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = (i * TAU) / 6 + 0.3;
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + Math.cos(a) * r * 1.5, y + Math.sin(a) * r * 1.5);
+    }
+    ctx.stroke();
+    ellipse(ctx, x, y, r * 0.9, r * 0.9);
+    ctx.stroke();
+  }
   if (pl.abilityT > 0) {
     if (pl.charId === 'knight') {
       ctx.strokeStyle = rgba(c.accent, 0.8);

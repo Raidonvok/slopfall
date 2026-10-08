@@ -1,6 +1,6 @@
 import { ABILITY_MAX_LEVEL, CHARACTERS, CHARACTER_IDS } from '../../sim/content/characters';
 import { BONUSES, PERKS } from '../../sim/content/perks';
-import { levelDesc, MAX_WEAPON_LEVEL, WEAPONS } from '../../sim/content/weapons';
+import { levelDesc, MAX_WEAPON_LEVEL, weaponName, WEAPONS } from '../../sim/content/weapons';
 import type { GameState, Player, UpgradeOption } from '../../sim/types';
 import { drawCharacterBody } from '../render/draw';
 import { fmtTime } from '../render/hud';
@@ -61,9 +61,10 @@ export function buildCharSelect(onPick: (id: string) => void): void {
 function optionView(o: UpgradeOption, charId: string): { icon: string; color: string; name: string; tag: string; isNew: boolean; desc: string; evo: string } {
   if (o.kind === 'weapon') {
     const d = WEAPONS[o.id];
+    const paths = d.evos.map((e) => `${e.name} (${PERKS[e.perk].name})`).join(' or ');
     const evo = o.level === MAX_WEAPON_LEVEL
-      ? `Max level! Evolves into ${d.evoName} with ${PERKS[d.evoPerk].name} (open a chest)`
-      : o.level === 1 ? `Evolution: ${PERKS[d.evoPerk].name}` : '';
+      ? `Max level! Open a chest to evolve: ${paths}`
+      : o.level === 1 ? `Evolves into ${paths}` : '';
     return { icon: d.icon, color: d.color, name: d.name, tag: o.level === 1 ? 'NEW WEAPON' : `LEVEL ${o.level}`, isNew: o.level === 1, desc: levelDesc(d, o.level), evo };
   }
   if (o.kind === 'perk') {
@@ -74,6 +75,10 @@ function optionView(o: UpgradeOption, charId: string): { icon: string; color: st
     const c = CHARACTERS[charId];
     return { icon: '★', color: c.accent, name: c.ability.name, tag: `ABILITY ${o.level} / ${ABILITY_MAX_LEVEL}`, isNew: false, desc: c.ability.upgrade, evo: '' };
   }
+  if (o.kind === 'evo') {
+    const w = WEAPONS[o.id], e = w.evos[o.level];
+    return { icon: w.icon, color: '#ffd166', name: e.name, tag: `EVOLVE ${w.name.toUpperCase()}`, isNew: true, desc: e.desc, evo: `Requires ${PERKS[e.perk].name} ✓` };
+  }
   if (o.kind === 'bonus') {
     const d = BONUSES[o.id];
     return { icon: d.icon, color: d.color, name: d.name, tag: `BONUS ×${o.level}`, isNew: false, desc: d.desc, evo: '' };
@@ -81,11 +86,13 @@ function optionView(o: UpgradeOption, charId: string): { icon: string; color: st
   return { icon: '✚', color: '#6bff8f', name: 'Restore', tag: 'HEAL', isNew: false, desc: 'Heal 50% of max HP', evo: '' };
 }
 
-export function buildLevelUp(choices: UpgradeOption[], charId: string, onChoose: (i: number) => void): void {
+export function buildLevelUp(choices: UpgradeOption[], p: Player, onChoose: (i: number) => void): void {
   const box = $('levelup-cards');
   box.innerHTML = '';
+  const evolving = choices[0]?.kind === 'evo';
+  $('levelup-title').textContent = evolving ? 'CHOOSE AN EVOLUTION' : 'LEVEL UP!';
   choices.forEach((o, i) => {
-    const v = optionView(o, charId);
+    const v = optionView(o, p.charId);
     const card = el('div', 'card');
     card.style.setProperty('--c', v.color);
     card.innerHTML = `
@@ -98,6 +105,22 @@ export function buildLevelUp(choices: UpgradeOption[], charId: string, onChoose:
     card.addEventListener('click', () => onChoose(i));
     box.appendChild(card);
   });
+  // Evolution paths whose perk is missing are shown locked, so the choice is visible.
+  if (evolving) {
+    const w = WEAPONS[choices[0].id];
+    w.evos.forEach((e, i) => {
+      if (choices.some((o) => o.level === i)) return;
+      const card = el('div', 'card locked');
+      card.style.setProperty('--c', '#6b7290');
+      card.innerHTML = `
+        <div class="icon">🔒</div>
+        <div class="cname">${esc(e.name)}</div>
+        <div class="tag">LOCKED</div>
+        <div class="desc">${esc(e.desc)}</div>
+        <div class="evo">Requires ${esc(PERKS[e.perk].name)} perk</div>`;
+      box.appendChild(card);
+    });
+  }
 }
 
 const pct = (v: number) => `${v >= 0 ? '+' : ''}${Math.round(v * 100)}%`;
@@ -127,7 +150,7 @@ export function buildPause(p: Player): void {
   for (const w of p.weapons) {
     const d = WEAPONS[w.id];
     ars.appendChild(el('div', 'it', `<span class="ic" style="color:${d.color}">${d.icon}</span>
-      <span class="${w.evolved ? 'evolved' : ''}">${esc(w.evolved ? d.evoName : d.name)}</span>
+      <span class="${w.evolved ? 'evolved' : ''}">${esc(weaponName(w))}</span>
       <span class="lv">Lv ${w.level}</span>`));
   }
   for (const k of p.perks) {
@@ -156,8 +179,8 @@ export function buildGameOver(s: GameState, p: Player): void {
   $('over-damage').innerHTML = rows
     .map(([src, v]) => {
       const w = WEAPONS[src];
-      const evolved = p.weapons.find((x) => x.id === src)?.evolved;
-      const name = w ? `<span style="color:${w.color}">${w.icon}</span> ${esc(evolved ? w.evoName : w.name)}` : SRC_NAMES[src] ?? src;
+      const inst = p.weapons.find((x) => x.id === src);
+      const name = w ? `<span style="color:${w.color}">${w.icon}</span> ${esc(inst ? weaponName(inst) : w.name)}` : SRC_NAMES[src] ?? src;
       return `<tr><td>${name}</td><td>${Math.round(v).toLocaleString('en-US')}</td></tr>`;
     })
     .join('');

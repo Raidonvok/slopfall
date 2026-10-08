@@ -86,8 +86,12 @@ export function drawHud(ctx: Ctx, r: Renderer, s: GameState, me: Player, fx: Eff
     ctx.globalAlpha = 1;
   }
 
-  drawSlots(ctx, me, H);
-  drawAbility(ctx, me, W, H);
+  if (r.touchMode) {
+    drawSlots(ctx, me, 16, 66, 26); // bottom of the screen belongs to the thumbs
+  } else {
+    drawSlots(ctx, me, 16, H - 36 * 2 - 5 - 16, 36);
+    drawAbility(ctx, me, W, H);
+  }
   drawIndicators(ctx, r, s, me);
 
   // banners
@@ -125,16 +129,16 @@ function slot(ctx: Ctx, x: number, y: number, size: number, icon: string, color:
   ctx.fillText(level >= max ? (evolved ? '★' : 'MAX') : String(level), x + size - 3, y + size - 3);
 }
 
-function drawSlots(ctx: Ctx, me: Player, H: number): void {
-  const size = 36, gap = 5;
-  let x = 16;
-  const y1 = H - size * 2 - gap - 16, y2 = H - size - 16;
+function drawSlots(ctx: Ctx, me: Player, x0: number, y1: number, size: number): void {
+  const gap = 5;
+  let x = x0;
+  const y2 = y1 + size + gap;
   for (const w of me.weapons) {
     const d = WEAPONS[w.id];
     slot(ctx, x, y1, size, d.icon, d.color, w.level, MAX_WEAPON_LEVEL, w.evolved);
     x += size + gap;
   }
-  x = 16;
+  x = x0;
   for (const k of me.perks) {
     const d = PERKS[k.id];
     slot(ctx, x, y2, size, d.icon, d.color, k.level, d.max, false);

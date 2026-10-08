@@ -35,6 +35,7 @@ export interface WeaponInst {
   id: string;
   level: number;
   evolved: boolean;
+  evo: string; // id of the chosen evolution ('' while not evolved)
   cd: number;
   t: number; // weapon-specific timer / angle
   r: number; // weapon-specific radius (used by aura rendering)
@@ -50,6 +51,7 @@ export type UpgradeOption =
   | { kind: 'perk'; id: string; level: number }
   | { kind: 'ability'; id: 'ability'; level: number }
   | { kind: 'bonus'; id: string; level: number }
+  | { kind: 'evo'; id: string; level: number } // id = weapon id, level = index into its evolutions
   | { kind: 'heal'; id: 'heal'; level: 0 };
 
 export interface Player {
@@ -89,6 +91,8 @@ export interface Player {
   anchorY: number;
   skyfallCd: number;
   skyfallN: number;
+  slowT: number; // slowed by webs
+  evoQueue: string[]; // weapons waiting for the player to pick an evolution
   pendingLevels: number;
   choices: UpgradeOption[] | null;
   dead: boolean;
@@ -128,6 +132,7 @@ export interface Enemy {
   ang: number;
   dmgAcc: number;
   intangible: boolean;
+  trail: number[]; // body segment positions (x, y pairs) for serpent bosses
   dead: boolean;
 }
 
@@ -287,6 +292,7 @@ export type SimEvent =
   | { t: 'explode'; x: number; y: number; r: number; color: string }
   | { t: 'pickup'; pid: PlayerId; kind: PickupKind }
   | { t: 'chest'; pid: PlayerId; items: string[] }
+  | { t: 'evolve'; pid: PlayerId; name: string }
   | { t: 'ability'; pid: PlayerId; char: string }
   | { t: 'dash'; pid: PlayerId }
   | { t: 'dodge'; pid: PlayerId }

@@ -18,11 +18,13 @@ Every push to `main` runs `.github/workflows/deploy.yml`: it installs, runs the 
 ## Controls
 WASD / arrows move · mouse aims · Space or right click uses your hero's ability · Shift dashes · 1–3 picks a level-up · Esc pauses · M mutes.
 
+On phones and tablets on-screen controls appear automatically: drag on the left half to move (aiming is automatic), ★ ability, » dash, ❚❚ pause.
+
 ## Content
 - **6 heroes**, each with a starting weapon, a passive and an active ability (Knight, Mage, Ranger, Necromancer, Engineer, Berserker).
-- **10 weapons** (8 levels each). At max level each one **evolves** when you open a chest while owning its paired perk.
+- **10 weapons** (8 levels each). At max level a chest unlocks an **evolution**; five weapons have two evolution paths (each needs a different perk) and the player picks one.
 - **12 perks**; max 6 weapon + 6 perk slots.
-- **9 enemy types** + elites, **4 bosses** every 5th wave (two at once from wave 20), endless scaling waves.
+- **9 enemy types** + elites, **6 bosses** every 5th wave (two at once from wave 20), endless scaling waves, anti-AFK meteors.
 
 ## Architecture (multiplayer-ready)
 - `src/sim/` is a pure, deterministic simulation: no DOM, no `Math.random`/`Date.now`, seeded RNG stored in the state, fixed 60 Hz `step(state, inputs)`.

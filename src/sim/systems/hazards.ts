@@ -22,6 +22,8 @@ export function updateEnemyProjectiles(s: GameState, dt: number): void {
       if (p.dead) continue;
       const rr = b.r + p.radius * 0.8;
       if ((p.x - b.x) ** 2 + (p.y - b.y) ** 2 < rr * rr) {
+        // webs slow you down unless you dash through them
+        if (b.kind === 'web' && p.dashT <= 0) p.slowT = Math.max(p.slowT, 2);
         hurtPlayer(s, p, b.dmg);
         b.dead = true;
         break;

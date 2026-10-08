@@ -12,6 +12,7 @@ import { Minimap } from './minimap';
 
 const VIEW_W = 1400;
 const VIEW_H = 800;
+const VIEW_W_PORTRAIT = 1300;
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
@@ -32,15 +33,21 @@ export class Renderer {
     window.addEventListener('resize', () => this.resize());
   }
 
+  /** Phones/tablets: lighter resolution, HUD laid out around the touch controls. */
+  touchMode = false;
+
   resize(): void {
-    this.dpr = Math.min(2, window.devicePixelRatio || 1);
+    this.dpr = Math.min(this.touchMode ? 1.5 : 2, window.devicePixelRatio || 1);
     this.w = window.innerWidth;
     this.h = window.innerHeight;
     this.canvas.width = Math.floor(this.w * this.dpr);
     this.canvas.height = Math.floor(this.h * this.dpr);
     this.canvas.style.width = `${this.w}px`;
     this.canvas.style.height = `${this.h}px`;
-    this.scale = Math.max(this.w / VIEW_W, this.h / VIEW_H);
+    // portrait screens (phones) get a tall view instead of a wide one
+    this.scale = this.h > this.w
+      ? Math.max(this.w / VIEW_H, this.h / VIEW_W_PORTRAIT)
+      : Math.max(this.w / VIEW_W, this.h / VIEW_H);
   }
 
   /** Screen position (CSS px) of the local player, used for aiming. */
@@ -132,7 +139,7 @@ export class Renderer {
       const x = lerp(pk.px, pk.x, alpha), y = lerp(pk.py, pk.y, alpha);
       if (vis(x, y)) drawPickup(ctx, pk, x, y, t);
     }
-    for (const z of s.zones) if (z.kind === 'nova' || z.kind === 'nova2' || z.kind === 'bash' || z.kind === 'raise') drawZone(ctx, z, t);
+    for (const z of s.zones) if (z.kind === 'nova' || z.kind === 'nova2' || z.kind === 'nova3' || z.kind === 'bash' || z.kind === 'raise') drawZone(ctx, z, t);
     for (const tu of s.turrets) if (vis(tu.x, tu.y)) drawTurret(ctx, tu, t);
 
     // enemies, nearest local player provides the facing direction
@@ -153,7 +160,7 @@ export class Renderer {
 
     this.world.drawCanopies(ctx, seed, minX, minY, maxX, maxY, this.camX, this.camY, t);
 
-    for (const z of s.zones) if (z.kind === 'slash' || z.kind === 'slash2' || z.kind === 'bolt') drawZone(ctx, z, t);
+    for (const z of s.zones) if (z.kind === 'slash' || z.kind === 'slash2' || z.kind === 'slash3' || z.kind === 'bolt') drawZone(ctx, z, t);
 
     for (const pr of s.projectiles) {
       const x = lerp(pr.px, pr.x, alpha), y = lerp(pr.py, pr.y, alpha);

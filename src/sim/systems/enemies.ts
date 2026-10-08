@@ -1,11 +1,13 @@
 import { ignoresObstacles } from '../content/enemies';
-import { hurtPlayer, killEnemy } from '../combat';
-import { addEnemyProjectile, nearestPlayer } from '../entities';
+import { hurtPlayer, killEnemy, waveScale } from '../combat';
+import { addEnemyProjectile, nearestPlayer, spawnEnemy } from '../entities';
 import { rand, randRange } from '../rng';
 import { resolveObstacles } from '../map';
 import { forEnemiesInCircle } from '../spatial';
 import type { Enemy, GameState, Player } from '../types';
 import { updateBoss } from './bosses';
+
+export const EGG_HATCH = 5;
 
 export function updateEnemies(s: GameState, dt: number): void {
   const decay = Math.max(0, 1 - 9 * dt);
@@ -30,7 +32,7 @@ export function updateEnemies(s: GameState, dt: number): void {
     if (e.dead) continue;
     if (!ignoresObstacles(e.type)) slideAroundObstacles(s, e, nx, ny, sp, dt);
 
-    if (!e.intangible) {
+    if (!e.intangible && e.dmg > 0) {
       for (const p of s.players) {
         if (p.dead) continue;
         const rr = e.radius + p.radius;
@@ -157,6 +159,17 @@ function updateRegular(s: GameState, e: Enemy, d: number, nx: number, ny: number
           s.events.push({ t: 'shake', v: 5 });
           killEnemy(s, e, null);
         }
+      }
+      break;
+    }
+    case 'egg': {
+      // hatches into a swarm unless destroyed in time
+      e.t2 += dt;
+      if (e.t2 >= EGG_HATCH) {
+        const sc = waveScale(s.wave.n);
+        for (let i = 0; i < 5; i++) spawnEnemy(s, 'swarm', e.x + randRange(s, -14, 14), e.y + randRange(s, -14, 14), sc);
+        s.events.push({ t: 'explode', x: e.x, y: e.y, r: 40, color: '#e9dcc0' });
+        e.dead = true;
       }
       break;
     }

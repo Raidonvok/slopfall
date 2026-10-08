@@ -29,6 +29,12 @@ canvas#game {
   inset: 0;
   display: block;
   cursor: crosshair;
+  touch-action: none;
+}
+
+body {
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 #ui {
@@ -337,6 +343,18 @@ kbd {
   color: var(--gold);
 }
 
+.card.locked {
+  cursor: default;
+  opacity: 0.55;
+  filter: grayscale(0.7);
+}
+
+.card.locked:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--line);
+}
+
 .card .key {
   margin-top: auto;
   color: var(--muted);
@@ -440,4 +458,152 @@ kbd {
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--muted);
+}
+
+/* ---------------------------------------------------------------- touch */
+
+.controls-touch,
+.hint-touch {
+  display: none;
+}
+
+body.touch .controls,
+body.touch .hint-keys,
+body.touch .card .key {
+  display: none;
+}
+
+body.touch .controls-touch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+body.touch .hint-touch {
+  display: block;
+}
+
+.screen {
+  touch-action: pan-y;
+}
+
+#touch {
+  position: fixed;
+  inset: 0;
+  display: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#touch.on {
+  display: block;
+}
+
+.stick-base {
+  position: absolute;
+  width: 124px;
+  height: 124px;
+  margin: -62px 0 0 -62px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  display: none;
+  pointer-events: none;
+}
+
+.stick-base.shown {
+  display: block;
+}
+
+.stick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 54px;
+  height: 54px;
+  margin: -27px 0 0 -27px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 16px rgba(130, 170, 255, 0.4);
+}
+
+.t-btn {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
+  font: 700 30px system-ui, sans-serif;
+  /* dark sector = remaining cooldown */
+  background: conic-gradient(rgba(6, 8, 18, 0.85) calc(var(--cd, 0) * 360deg), rgba(36, 46, 86, 0.8) 0);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  padding: 0;
+}
+
+.t-btn.ready {
+  border-color: var(--c, #9ad8ff);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--c, #9ad8ff) 60%, transparent);
+}
+
+.t-btn:active {
+  transform: scale(0.94);
+}
+
+.t-ability {
+  width: 88px;
+  height: 88px;
+  right: calc(22px + env(safe-area-inset-right));
+  bottom: calc(26px + env(safe-area-inset-bottom));
+}
+
+.t-dash {
+  --c: #9ad8ff;
+  width: 66px;
+  height: 66px;
+  right: calc(124px + env(safe-area-inset-right));
+  bottom: calc(30px + env(safe-area-inset-bottom));
+}
+
+.t-pause {
+  width: 44px;
+  height: 44px;
+  font-size: 14px;
+  /* just left of the minimap (which is min(160px, 18vw) wide, 12px from the edge) */
+  right: calc(min(160px, 18vw) + 22px + env(safe-area-inset-right));
+  top: 84px;
+}
+
+/* small / phone screens */
+@media (max-height: 520px), (max-width: 620px) {
+  .card {
+    width: min(300px, 88vw);
+    min-height: 0;
+    padding: 12px;
+    gap: 5px;
+  }
+
+  .card .icon {
+    font-size: 30px;
+  }
+
+  .menu-box {
+    gap: 18px;
+  }
+
+  .pause-cols {
+    gap: 14px;
+    padding: 12px;
+  }
+}
+
+@media (max-height: 520px) {
+  .card {
+    width: 190px;
+  }
 }

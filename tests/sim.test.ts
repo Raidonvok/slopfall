@@ -3,7 +3,9 @@ import { damageEnemy, waveScale } from '../src/sim/combat';
 import { MAX_SLOTS, openChest, rollChoices } from '../src/sim/systems/leveling';
 import { abilityPower } from '../src/sim/systems/abilities';
 import { getChunk, isBlocked } from '../src/sim/map';
-import { addHazard, spawnEnemy } from '../src/sim/entities';
+import { addEnemyProjectile, addHazard, spawnEnemy } from '../src/sim/entities';
+import { startWave } from '../src/sim/systems/waves';
+import { WEAPONS } from '../src/sim/content/weapons';
 import { ABILITY_MAX_LEVEL, CHARACTER_IDS } from '../src/sim/content/characters';
 import type { GameState, InputCmd } from '../src/sim/types';
 import { createGame, step } from '../src/sim/world';
@@ -159,17 +161,66 @@ describe('simulation', () => {
     expect(abilityPower(s, p)).toBeGreaterThan(early * 10);
   });
 
-  it('evolves a max level weapon from a chest when its perk is owned', () => {
+  it('lets the player choose between evolutions they qualify for', () => {
     const s = createGame(8, [{ id: 'p1', charId: 'mage' }]);
     const p = s.players[0];
+    const idle = { mx: 0, my: 0, ax: 1, ay: 0, ability: false, dash: false, choose: -1 };
     p.weapons[0].level = 8;
     openChest(s, p, false);
-    expect(p.weapons[0].evolved).toBe(false);
-    p.perks.push({ id: 'haste', level: 1 });
+    expect(p.evoQueue.length).toBe(0); // no qualifying perk yet
+
+    p.perks.push({ id: 'haste', level: 1 }, { id: 'area', level: 1 });
     openChest(s, p, false);
+    step(s, { p1: idle });
+    expect(p.choices?.map((o) => o.kind)).toEqual(['evo', 'evo']);
+    expect(p.choices?.map((o) => WEAPONS.bolt.evos[o.level].id)).toEqual(['arcanestorm', 'prism']);
+
+    step(s, { p1: { ...idle, choose: 1 } });
     expect(p.weapons[0].evolved).toBe(true);
-    const chest = s.events.filter((e) => e.t === 'chest').pop();
-    expect(chest && chest.t === 'chest' && chest.items[0]).toContain('Arcane Storm');
+    expect(p.weapons[0].evo).toBe('prism');
+    expect(s.events.some((e) => e.t === 'evolve' && e.name === 'Prism Lance')).toBe(true);
+
+    // simulation keeps running with the chosen evolution
+    for (let i = 0; i < 600; i++) step(s, { p1: { ...idle, choose: p.choices ? 0 : -1 } });
+    expect(s.projectiles.some((pr) => pr.kind === 'prism')).toBe(true);
+  });
+
+  it('runs every alternative evolution without errors', () => {
+    for (const [weapon, evo] of [['sword', 'bladedancer'], ['axe', 'twinreavers'], ['nova', 'supernova'], ['turret', 'mortar']]) {
+      const s = createGame(31, [{ id: 'p1', charId: 'knight' }], { godMode: true });
+      const p = s.players[0];
+      p.weapons = [{ id: weapon, level: 8, evolved: true, evo, cd: 0, t: 0, r: 0 }];
+      run(s, 1500);
+      expect(s.kills).toBeGreaterThan(10);
+      expect(Number.isFinite(p.x)).toBe(true);
+    }
+  });
+
+  it('spawns the new bosses in rotation and they fight', () => {
+    for (const [wave, type] of [[15, 'broodmother'], [25, 'wyrm']] as const) {
+      const s = createGame(17, [{ id: 'p1', charId: 'knight' }], { godMode: true });
+      startWave(s, wave);
+      const boss = s.enemies.find((e) => e.boss)!;
+      expect(boss.type).toBe(type);
+      let attacks = 0;
+      for (let i = 0; i < 60 * 20; i++) {
+        step(s, { p1: botInput(s, 'p1') });
+        attacks += s.eprojectiles.length + s.hazards.length;
+        if (boss.dead) break;
+      }
+      expect(attacks).toBeGreaterThan(0);
+      expect(Number.isFinite(boss.x) && Number.isFinite(boss.y)).toBe(true);
+      if (type === 'broodmother') expect(s.enemies.some((e) => e.type === 'egg') || s.kills > 0).toBe(true);
+      if (type === 'wyrm' && !boss.dead) expect(boss.trail.length).toBeGreaterThan(4);
+    }
+  });
+
+  it('webs slow the player unless they dash', () => {
+    const s = createGame(19, [{ id: 'p1', charId: 'knight' }]);
+    const p = s.players[0];
+    addEnemyProjectile(s, 'web', p.x + 30, p.y, -200, 0, 1, 10, 2);
+    for (let i = 0; i < 10; i++) step(s, { p1: { mx: 0, my: 0, ax: 1, ay: 0, ability: false, dash: false, choose: -1 } });
+    expect(p.slowT).toBeGreaterThan(0);
   });
 
   it('shockwave rings hurt when standing still but can be dashed through', () => {

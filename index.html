@@ -2,7 +2,8 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0d17" />
     <title>Nightfall Survivors</title>
     <link rel="stylesheet" href="/src/client/ui/style.css" />
   </head>
@@ -20,6 +21,10 @@
             <div><kbd>Shift</kbd> dash</div>
             <div><kbd>Esc</kbd> pause · <kbd>M</kbd> mute</div>
           </div>
+          <div class="controls-touch">
+            <div>Drag on the <b>left side</b> to move — aiming is automatic</div>
+            <div><b>★</b> ability · <b>»</b> dash · <b>❚❚</b> pause</div>
+          </div>
         </div>
       </section>
 
@@ -30,9 +35,10 @@
       </section>
 
       <section id="screen-levelup" class="screen overlay hidden">
-        <h2 class="glow-blue">LEVEL UP!</h2>
+        <h2 id="levelup-title" class="glow-blue">LEVEL UP!</h2>
         <div id="levelup-cards" class="cards"></div>
-        <p class="hint">Press <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> or click</p>
+        <p class="hint hint-keys">Press <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> or click</p>
+        <p class="hint hint-touch">Tap a card</p>
       </section>
 
       <section id="screen-pause" class="screen overlay hidden">

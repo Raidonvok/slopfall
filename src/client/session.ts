@@ -68,7 +68,14 @@ export class Session {
     const me = s.players[0];
     if (!this.input) return this.botCommand();
     const [sx, sy] = this.renderer.screenOf(me.x, me.y);
-    return this.input.sample(sx, sy, this.renderer.scale);
+    const cmd = this.input.sample(sx, sy, this.renderer.scale);
+    if (this.input.usingTouch) {
+      // no mouse on touch screens: aim at the nearest enemy, else straight ahead
+      const e = nearestEnemy(s, me.x, me.y, 700);
+      cmd.ax = e ? e.x - me.x : me.fx * 120;
+      cmd.ay = e ? e.y - me.y : me.fy * 120;
+    }
+    return cmd;
   }
 
   private botCommand(): InputCmd {
@@ -203,12 +210,14 @@ export class Session {
         case 'chest':
           if (ev.pid !== LOCAL_ID) break;
           snd?.play('chest');
-          if (ev.items.some((i) => i.startsWith('EVOLUTION'))) {
-            const evo = ev.items.find((i) => i.startsWith('EVOLUTION'))!;
-            fx.banner('EVOLUTION!', evo.replace('EVOLUTION: ', ''), '#ffd166', 3);
-          }
-          fx.toast('TREASURE CHEST', ev.items.filter((i) => !i.startsWith('EVOLUTION')).join('  ·  '));
+          fx.toast('TREASURE CHEST', ev.items.join('  ·  '));
           fx.burst(me.x, me.y, '#ffd166', 40, 260, 4, 0.9);
+          break;
+        case 'evolve':
+          if (ev.pid !== LOCAL_ID) break;
+          fx.banner('EVOLUTION!', ev.name, '#ffd166', 3);
+          fx.ring(me.x, me.y, 200, '#ffd166', 0.7, 10);
+          snd?.play('victory');
           break;
         case 'ability':
           if (ev.pid === LOCAL_ID) {

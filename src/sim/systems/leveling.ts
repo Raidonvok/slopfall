@@ -3,7 +3,7 @@ import { BONUSES, BONUS_IDS, PERKS, PERK_IDS } from '../content/perks';
 import { MAX_WEAPON_LEVEL, WEAPONS, WEAPON_IDS } from '../content/weapons';
 import { healPlayer } from '../combat';
 import { rand, weightedPick } from '../rng';
-import type { GameState, Player, Stats, UpgradeOption } from '../types';
+import type { GameState, Player, Stats, UpgradeOption, WeaponInst } from '../types';
 
 export const MAX_SLOTS = 6;
 
@@ -36,11 +36,11 @@ export function createPlayer(id: string, charId: string, x: number, y: number): 
     id, charId, x, y, px: x, py: y, fx: 1, fy: 0, ax: 1, ay: 0,
     hp: c.hp, stats: null as unknown as Stats, radius: 14,
     level: 1, xp: 0, xpNext: xpForLevel(1),
-    weapons: [{ id: c.weapon, level: 1, evolved: false, cd: 0.5, t: 0, r: 0 }],
+    weapons: [{ id: c.weapon, level: 1, evolved: false, evo: '', cd: 0.5, t: 0, r: 0 }],
     perks: [],
     abilityLevel: 1, abilityCd: 0, abilityMaxCd: c.ability.cd, abilityT: 0,
     invuln: 0, hurtT: 0, dashT: 0, dashX: 0, dashY: 0, dashCd: 0, dashMaxCd: 0, bonus: {},
-    healBudget: 0, idleT: 0, anchorX: x, anchorY: y, skyfallCd: 0, skyfallN: 0,
+    healBudget: 0, idleT: 0, anchorX: x, anchorY: y, skyfallCd: 0, skyfallN: 0, slowT: 0, evoQueue: [],
     pendingLevels: 0, choices: null, dead: false, kills: 0, dmgDealt: {},
   };
   p.stats = computeStats(p);
@@ -116,7 +116,7 @@ export function applyOption(s: GameState, p: Player, o: UpgradeOption): void {
   if (o.kind === 'weapon') {
     const w = p.weapons.find((x) => x.id === o.id);
     if (w) w.level = o.level;
-    else p.weapons.push({ id: o.id, level: 1, evolved: false, cd: 0.2, t: 0, r: 0 });
+    else p.weapons.push({ id: o.id, level: 1, evolved: false, evo: '', cd: 0.2, t: 0, r: 0 });
   } else if (o.kind === 'perk') {
     const k = p.perks.find((x) => x.id === o.id);
     if (k) k.level = o.level;
@@ -124,6 +124,14 @@ export function applyOption(s: GameState, p: Player, o: UpgradeOption): void {
     refreshStats(p);
   } else if (o.kind === 'ability') {
     p.abilityLevel = o.level;
+  } else if (o.kind === 'evo') {
+    const w = p.weapons.find((x) => x.id === o.id);
+    const e = WEAPONS[o.id].evos[o.level];
+    if (w && e && !w.evolved) {
+      w.evolved = true;
+      w.evo = e.id;
+      s.events.push({ t: 'evolve', pid: p.id, name: e.name });
+    }
   } else if (o.kind === 'bonus') {
     p.bonus[o.id] = o.level;
     refreshStats(p);
@@ -140,8 +148,31 @@ export function chooseUpgrade(s: GameState, p: Player, index: number): void {
   s.events.push({ t: 'sfx', name: 'select' });
 }
 
+/** Evolutions of a weapon whose required perk the player owns. */
+export function evoChoices(p: Player, weaponId: string): UpgradeOption[] {
+  const out: UpgradeOption[] = [];
+  WEAPONS[weaponId].evos.forEach((e, i) => {
+    if (p.perks.some((k) => k.id === e.perk)) out.push({ kind: 'evo', id: weaponId, level: i });
+  });
+  return out;
+}
+
+function canEvolve(p: Player, w: WeaponInst): boolean {
+  return !w.evolved && w.level >= MAX_WEAPON_LEVEL && !p.evoQueue.includes(w.id) && evoChoices(p, w.id).length > 0;
+}
+
 export function updateLeveling(s: GameState, p: Player): void {
-  if (!p.dead && !p.choices && p.pendingLevels > 0) {
+  if (p.dead || p.choices) return;
+  // A pending evolution pick comes before regular level-ups.
+  while (p.evoQueue.length > 0) {
+    const id = p.evoQueue.shift()!;
+    const opts = evoChoices(p, id);
+    if (opts.length > 0 && !p.weapons.find((w) => w.id === id)?.evolved) {
+      p.choices = opts;
+      return;
+    }
+  }
+  if (p.pendingLevels > 0) {
     p.pendingLevels--;
     p.choices = rollChoices(s, p);
   }
@@ -151,22 +182,23 @@ export function optionName(o: UpgradeOption): string {
   if (o.kind === 'weapon') return `${WEAPONS[o.id].name} ${o.level > 1 ? 'Lv ' + o.level : '(new)'}`;
   if (o.kind === 'perk') return `${PERKS[o.id].name} ${o.level > 1 ? 'Lv ' + o.level : '(new)'}`;
   if (o.kind === 'ability') return `Ability Lv ${o.level}`;
+  if (o.kind === 'evo') return WEAPONS[o.id].evos[o.level].name;
   if (o.kind === 'bonus') return BONUSES[o.id].name;
   return 'Heal';
 }
 
-/** Chest: evolve a weapon if possible, otherwise grant random upgrades. */
+/**
+ * Chest: unlocks an evolution if a max level weapon qualifies (the player
+ * then picks which one), otherwise grants random upgrades.
+ */
 export function openChest(s: GameState, p: Player, big: boolean): void {
   const items: string[] = [];
   let count = big ? 3 : 1;
-  for (const w of p.weapons) {
-    const def = WEAPONS[w.id];
-    if (!w.evolved && w.level >= MAX_WEAPON_LEVEL && p.perks.some((k) => k.id === def.evoPerk)) {
-      w.evolved = true;
-      items.push(`EVOLUTION: ${def.evoName}!`);
-      count--;
-      break;
-    }
+  const w = p.weapons.find((x) => canEvolve(p, x));
+  if (w) {
+    p.evoQueue.push(w.id);
+    items.push(`Evolution unlocked: ${WEAPONS[w.id].name}!`);
+    count--;
   }
   for (let i = 0; i < count; i++) {
     const pool = upgradePool(p).filter((o) => o.level > 1);

@@ -26,15 +26,18 @@ const defs: EnemyDef[] = [
   { id: 'shaman', name: 'Shaman', hp: 50, speed: 65, dmg: 8, radius: 15, xp: 6, color: '#2ee6c5', cost: 6, unlock: 11, group: [1, 1] },
   // Spawned only by other enemies
   { id: 'slimelet', name: 'Slimelet', hp: 12, speed: 85, dmg: 6, radius: 10, xp: 1, color: '#7cc8ff', cost: 1, unlock: 0, group: [1, 1] },
+  { id: 'egg', name: 'Brood Egg', hp: 60, speed: 0, dmg: 0, radius: 13, xp: 1, color: '#e9dcc0', cost: 1, unlock: 0, group: [1, 1] },
   { id: 'skeleton', name: 'Skeleton', hp: 25, speed: 85, dmg: 9, radius: 13, xp: 2, color: '#d8d2bd', cost: 1, unlock: 0, group: [1, 1] },
   // Bosses
   { id: 'slimeking', name: 'Slime King', hp: 2600, speed: 70, dmg: 24, radius: 50, xp: 100, color: '#2f8fff', cost: 0, unlock: 0, group: [1, 1], boss: true },
   { id: 'necrolord', name: 'Necro Lord', hp: 3000, speed: 70, dmg: 20, radius: 34, xp: 120, color: '#9b59ff', cost: 0, unlock: 0, group: [1, 1], boss: true },
   { id: 'golem', name: 'Stone Golem', hp: 4600, speed: 50, dmg: 30, radius: 48, xp: 140, color: '#a08c74', cost: 0, unlock: 0, group: [1, 1], boss: true },
+  { id: 'broodmother', name: 'Brood Mother', hp: 3400, speed: 85, dmg: 22, radius: 44, xp: 130, color: '#8b2f5a', cost: 0, unlock: 0, group: [1, 1], boss: true },
+  { id: 'wyrm', name: 'Frost Wyrm', hp: 4300, speed: 135, dmg: 26, radius: 34, xp: 150, color: '#7fd4ff', cost: 0, unlock: 0, group: [1, 1], boss: true },
   { id: 'voideye', name: 'Void Eye', hp: 4000, speed: 45, dmg: 22, radius: 40, xp: 160, color: '#ff2e88', cost: 0, unlock: 0, group: [1, 1], boss: true },
 ];
 
 export const ENEMIES: Record<string, EnemyDef> = Object.fromEntries(defs.map((d) => [d.id, d]));
 export const WAVE_ENEMY_IDS = defs.filter((d) => d.unlock > 0).map((d) => d.id);
 export const ignoresObstacles = (type: string) => !!(ENEMIES[type].flying || ENEMIES[type].boss);
-export const BOSS_ORDER = ['slimeking', 'necrolord', 'golem', 'voideye'];
+export const BOSS_ORDER = ['slimeking', 'necrolord', 'broodmother', 'golem', 'wyrm', 'voideye'];

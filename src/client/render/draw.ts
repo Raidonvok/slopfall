@@ -1,4 +1,6 @@
 import { ENEMIES } from '../../sim/content/enemies';
+import { wyrmSegmentRadius } from '../../sim/systems/bosses';
+import { EGG_HATCH } from '../../sim/systems/enemies';
 import type { Enemy, EnemyProjectile, Hazard, Minion, Pickup, Projectile, Turret, Zone } from '../../sim/types';
 import { rgba } from './sprites';
 
@@ -165,6 +167,32 @@ export function drawEnemy(ctx: Ctx, e: Enemy, x: number, y: number, t: number, d
       ctx.globalAlpha = 1;
       break;
     }
+    case 'egg': {
+      const k = Math.min(1, e.t2 / EGG_HATCH);
+      const pulse = 1 + Math.sin(t * (6 + k * 20)) * 0.06 * (0.3 + k);
+      ctx.fillStyle = e.flash > 0.06 ? '#ffffff' : col;
+      ctx.beginPath();
+      ctx.ellipse(x, y, r * 0.85 * pulse, r * 1.05 * pulse, 0, 0, TAU);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(160,40,80,${0.35 + k * 0.5})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x - r * 0.4, y - r * 0.6);
+      ctx.quadraticCurveTo(x, y - r * 0.1, x - r * 0.2, y + r * 0.7);
+      ctx.moveTo(x + r * 0.45, y - r * 0.4);
+      ctx.quadraticCurveTo(x + r * 0.1, y + r * 0.2, x + r * 0.35, y + r * 0.8);
+      ctx.stroke();
+      if (k > 0.6) {
+        ctx.strokeStyle = '#2a1018';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x - r * 0.3, y - r * 0.2);
+        ctx.lineTo(x, y);
+        ctx.lineTo(x - r * 0.1, y + r * 0.3);
+        ctx.stroke();
+      }
+      break;
+    }
     case 'shaman': {
       ctx.beginPath();
       for (let i = 0; i < 6; i++) {
@@ -316,6 +344,132 @@ function drawBoss(ctx: Ctx, e: Enemy, x: number, y: number, t: number, dx: numbe
       ctx.fill();
       break;
     }
+    case 'broodmother': {
+      const moving = e.state === 0 || e.state === 2;
+      const ang = e.state === 2 || e.state === 3 ? Math.atan2(e.ty, e.tx) : Math.atan2(dy, dx);
+      const fx = Math.cos(ang), fy = Math.sin(ang);
+      if (e.state === 3) {
+        ctx.strokeStyle = 'rgba(255,60,90,0.3)';
+        ctx.lineWidth = r * 1.4;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + fx * 300, y + fy * 300);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath();
+      ctx.ellipse(x, y + r * 0.6, r * 1.2, r * 0.45, 0, 0, TAU);
+      ctx.fill();
+      // legs
+      ctx.strokeStyle = '#2a0f1e';
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      for (let side = -1; side <= 1; side += 2) {
+        for (let i = 0; i < 4; i++) {
+          const la = ang + side * (0.55 + i * 0.5) + (moving ? Math.sin(t * 14 + i * 1.7 + side) * 0.18 : 0);
+          const kx = x + Math.cos(la) * r * 1.15, ky = y + Math.sin(la) * r * 1.15 - r * 0.35;
+          const ex = x + Math.cos(la) * r * 1.75, ey = y + Math.sin(la) * r * 1.75 + r * 0.25;
+          ctx.beginPath();
+          ctx.moveTo(x + Math.cos(la) * r * 0.4, y + Math.sin(la) * r * 0.4);
+          ctx.lineTo(kx, ky);
+          ctx.lineTo(ex, ey);
+          ctx.stroke();
+        }
+      }
+      // abdomen with hourglass
+      const ax = x - fx * r * 0.75, ay = y - fy * r * 0.75;
+      ctx.fillStyle = e.flash > 0.06 ? '#fff' : '#4a1830';
+      ctx.beginPath();
+      ctx.ellipse(ax, ay, r * 0.95, r * 0.8, ang, 0, TAU);
+      ctx.fill();
+      ctx.fillStyle = enraged ? '#ff3060' : '#d8344f';
+      ctx.beginPath();
+      ctx.moveTo(ax - fy * r * 0.25 - fx * r * 0.2, ay + fx * r * 0.25 - fy * r * 0.2);
+      ctx.lineTo(ax + fy * r * 0.25 - fx * r * 0.2, ay - fx * r * 0.25 - fy * r * 0.2);
+      ctx.lineTo(ax - fy * r * 0.25 + fx * r * 0.2, ay + fx * r * 0.25 + fy * r * 0.2);
+      ctx.lineTo(ax + fy * r * 0.25 + fx * r * 0.2, ay - fx * r * 0.25 + fy * r * 0.2);
+      ctx.closePath();
+      ctx.fill();
+      // head
+      const hx = x + fx * r * 0.2, hy = y + fy * r * 0.2;
+      ctx.fillStyle = col;
+      circle(ctx, hx, hy, r * 0.6);
+      ctx.fill();
+      ctx.fillStyle = enraged ? '#ff2040' : '#ff6a8a';
+      for (let i = 0; i < 6; i++) {
+        const ea = ang + (i - 2.5) * 0.28;
+        circle(ctx, hx + Math.cos(ea) * r * 0.38, hy + Math.sin(ea) * r * 0.38 - (i % 2) * 3, i % 2 ? 3 : 4.5);
+        ctx.fill();
+      }
+      ctx.strokeStyle = '#1a0810';
+      ctx.lineWidth = 4;
+      for (const sd of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(hx + fx * r * 0.5 - fy * sd * r * 0.15, hy + fy * r * 0.5 + fx * sd * r * 0.15);
+        ctx.lineTo(hx + fx * r * 0.8 - fy * sd * r * 0.05, hy + fy * r * 0.8 + fx * sd * r * 0.05);
+        ctx.stroke();
+      }
+      break;
+    }
+    case 'wyrm': {
+      // body from the tail toward the head
+      const n = e.trail.length / 2;
+      for (let i = n - 1; i >= 1; i--) {
+        const sx = e.trail[i * 2], sy = e.trail[i * 2 + 1];
+        const sr = wyrmSegmentRadius(r, i);
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.beginPath();
+        ctx.ellipse(sx, sy + sr * 0.7, sr, sr * 0.35, 0, 0, TAU);
+        ctx.fill();
+        ctx.fillStyle = i % 2 ? '#5fb8e8' : col;
+        circle(ctx, sx, sy, sr);
+        ctx.fill();
+        ctx.strokeStyle = '#1d4a6a';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = '#e8f8ff';
+        circle(ctx, sx, sy - sr * 0.35, sr * 0.28);
+        ctx.fill();
+      }
+      const ha = e.ang, hfx = Math.cos(ha), hfy = Math.sin(ha);
+      if (e.state === 1) {
+        ctx.strokeStyle = 'rgba(140,220,255,0.35)';
+        ctx.lineWidth = r * 1.6;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + hfx * 480, y + hfy * 480);
+        ctx.stroke();
+      }
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(ha);
+      ctx.fillStyle = e.flash > 0.06 ? '#ffffff' : col;
+      ctx.beginPath();
+      ctx.ellipse(r * 0.15, 0, r * 1.15, r * 0.8, 0, 0, TAU);
+      ctx.fill();
+      ctx.strokeStyle = '#1d4a6a';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.fillStyle = '#e8f8ff';
+      for (const sd of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.4, sd * r * 0.5);
+        ctx.lineTo(-r * 1.25, sd * r * 1.05);
+        ctx.lineTo(-r * 0.15, sd * r * 0.3);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.fillStyle = enraged ? '#ff4d8a' : '#1a3cff';
+      for (const sd of [-1, 1]) {
+        circle(ctx, r * 0.6, sd * r * 0.35, r * 0.14);
+        ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(200,240,255,0.7)';
+      circle(ctx, r * 1.15, sd0(t) * r * 0.1, r * 0.12);
+      ctx.fill();
+      ctx.restore();
+      break;
+    }
     case 'voideye': {
       ctx.strokeStyle = '#5a1040';
       ctx.lineWidth = 4;
@@ -361,6 +515,9 @@ export function projectileColor(kind: string): string {
     case 'orb2': return '#ff7ae0';
     case 'axe': return '#ffb347';
     case 'axe2': return '#ff6a3d';
+    case 'axe3': return '#ff4d8a';
+    case 'prism': return '#fff6d6';
+    case 'shell': return '#ffb347';
     case 'bullet': return '#7dffcf';
     case 'shard': return '#9ad8ff';
     case 'shard2': return '#e0f6ff';
@@ -417,8 +574,38 @@ export function drawProjectile(ctx: Ctx, p: Projectile, x: number, y: number): v
       ctx.fill();
       break;
     }
+    case 'prism': {
+      const sp = Math.hypot(p.vx, p.vy) || 1;
+      const ux = p.vx / sp, uy = p.vy / sp;
+      ctx.lineCap = 'round';
+      for (const [w, c] of [[r * 2.2, 'rgba(180,140,255,0.35)'], [r * 1.3, 'rgba(110,231,255,0.6)'], [r * 0.6, '#ffffff']] as const) {
+        ctx.strokeStyle = c;
+        ctx.lineWidth = w;
+        ctx.beginPath();
+        ctx.moveTo(x - ux * r * 5, y - uy * r * 5);
+        ctx.lineTo(x + ux * r, y + uy * r);
+        ctx.stroke();
+      }
+      break;
+    }
+    case 'shell': {
+      const prog = Math.min(1, p.age / Math.max(0.01, p.maxLife));
+      const lift = Math.sin(prog * Math.PI) * 60;
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath();
+      ctx.ellipse(x, y, r, r * 0.4, 0, 0, TAU);
+      ctx.fill();
+      ctx.fillStyle = '#3a3a44';
+      circle(ctx, x, y - lift, r);
+      ctx.fill();
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      break;
+    }
     case 'axe':
-    case 'axe2': {
+    case 'axe2':
+    case 'axe3': {
       ctx.save();
       ctx.translate(x, y);
       ctx.rotate(p.ang);
@@ -459,10 +646,11 @@ export function drawProjectile(ctx: Ctx, p: Projectile, x: number, y: number): v
 export function drawZone(ctx: Ctx, z: Zone, t: number): void {
   const k = z.maxLife > 0 ? Math.max(0, z.life / z.maxLife) : 0;
   switch (z.kind) {
-    case 'slash': {
+    case 'slash':
+    case 'slash3': {
       const a0 = z.ang - z.arc / 2, a1 = z.ang + z.arc / 2;
       const sweep = a0 + (a1 - a0) * Math.min(1, (1 - k) * 2.2);
-      ctx.strokeStyle = `rgba(232,241,255,${0.85 * k})`;
+      ctx.strokeStyle = z.kind === 'slash3' ? `rgba(255,70,110,${0.9 * k})` : `rgba(232,241,255,${0.85 * k})`;
       ctx.lineWidth = z.r * 0.28;
       ctx.lineCap = 'round';
       ctx.beginPath();
@@ -479,12 +667,13 @@ export function drawZone(ctx: Ctx, z: Zone, t: number): void {
       break;
     }
     case 'nova':
-    case 'nova2': {
+    case 'nova2':
+    case 'nova3': {
       if (z.delay > 0) return;
       const prog = 1 - k;
       const cur = z.r0 + (z.r - z.r0) * prog;
-      ctx.strokeStyle = z.kind === 'nova2' ? `rgba(255,60,30,${k})` : `rgba(255,130,60,${k})`;
-      ctx.lineWidth = 10 + 12 * k;
+      ctx.strokeStyle = z.kind === 'nova3' ? `rgba(255,240,190,${k})` : z.kind === 'nova2' ? `rgba(255,60,30,${k})` : `rgba(255,130,60,${k})`;
+      ctx.lineWidth = (z.kind === 'nova3' ? 22 : 10) + 12 * k;
       circle(ctx, z.x, z.y, cur);
       ctx.stroke();
       ctx.fillStyle = `rgba(255,120,40,${0.12 * k})`;
@@ -604,10 +793,47 @@ export function drawMinion(ctx: Ctx, m: Minion, x: number, y: number, t: number)
 // ---------------------------------------------------------------- hostile
 
 export function eprojColor(kind: string): string {
-  return kind === 'arrow' ? '#ffe9b0' : kind === 'skull' ? '#b26bff' : '#ff2e88';
+  switch (kind) {
+    case 'arrow': return '#ffe9b0';
+    case 'skull': return '#b26bff';
+    case 'web': return '#e8e8f0';
+    case 'ice': return '#9ad8ff';
+    default: return '#ff2e88';
+  }
 }
 
+/** Small breathing offset for the wyrm's frosty breath. */
+const sd0 = (t: number) => Math.sin(t * 6);
+
 export function drawEnemyProjectile(ctx: Ctx, b: EnemyProjectile, x: number, y: number): void {
+  if (b.kind === 'web') {
+    ctx.strokeStyle = 'rgba(235,235,245,0.9)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = (i * TAU) / 6;
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + Math.cos(a) * b.r * 1.3, y + Math.sin(a) * b.r * 1.3);
+    }
+    ctx.stroke();
+    circle(ctx, x, y, b.r * 0.55);
+    ctx.stroke();
+    circle(ctx, x, y, b.r);
+    ctx.stroke();
+    return;
+  }
+  if (b.kind === 'ice') {
+    const a = Math.atan2(b.vy, b.vx);
+    ctx.fillStyle = '#c8f0ff';
+    ctx.beginPath();
+    ctx.moveTo(x + Math.cos(a) * b.r * 2, y + Math.sin(a) * b.r * 2);
+    ctx.lineTo(x + Math.cos(a + 1.7) * b.r * 0.7, y + Math.sin(a + 1.7) * b.r * 0.7);
+    ctx.lineTo(x - Math.cos(a) * b.r * 1.2, y - Math.sin(a) * b.r * 1.2);
+    ctx.lineTo(x + Math.cos(a - 1.7) * b.r * 0.7, y + Math.sin(a - 1.7) * b.r * 0.7);
+    ctx.closePath();
+    ctx.fill();
+    return;
+  }
   if (b.kind === 'arrow') {
     const sp = Math.hypot(b.vx, b.vy) || 1;
     ctx.strokeStyle = '#ffe9b0';

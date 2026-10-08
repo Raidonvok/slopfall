@@ -1,4 +1,5 @@
 import type { InputCmd } from '../sim/types';
+import type { TouchControls } from './touch';
 
 const UP = ['KeyW', 'ArrowUp', 'KeyZ'];
 const DOWN = ['KeyS', 'ArrowDown'];
@@ -12,6 +13,12 @@ export class Input {
   private mouseY = window.innerHeight / 2;
   private rmb = false;
   private pendingChoose = -1;
+  touch: TouchControls | null = null;
+
+  /** True while the on-screen touch controls drive the player (aim is automatic). */
+  get usingTouch(): boolean {
+    return !!this.touch?.active;
+  }
 
   constructor(canvas: HTMLCanvasElement) {
     window.addEventListener('keydown', (e) => {
@@ -46,14 +53,19 @@ export class Input {
 
   /** `px, py` are the player's on-screen position, `scale` the world-to-screen scale. */
   sample(px: number, py: number, scale: number): InputCmd {
-    const mx = (this.any(RIGHT) ? 1 : 0) - (this.any(LEFT) ? 1 : 0);
-    const my = (this.any(DOWN) ? 1 : 0) - (this.any(UP) ? 1 : 0);
+    let mx = (this.any(RIGHT) ? 1 : 0) - (this.any(LEFT) ? 1 : 0);
+    let my = (this.any(DOWN) ? 1 : 0) - (this.any(UP) ? 1 : 0);
+    const t = this.usingTouch ? this.touch : null;
+    if (t && (t.moveX !== 0 || t.moveY !== 0)) {
+      mx = t.moveX;
+      my = t.moveY;
+    }
     const cmd: InputCmd = {
       mx, my,
       ax: (this.mouseX - px) / scale,
       ay: (this.mouseY - py) / scale,
-      ability: this.keys.has('Space') || this.rmb,
-      dash: this.keys.has('ShiftLeft') || this.keys.has('ShiftRight'),
+      ability: this.keys.has('Space') || this.rmb || !!t?.ability,
+      dash: this.keys.has('ShiftLeft') || this.keys.has('ShiftRight') || !!t?.dash,
       choose: this.pendingChoose,
     };
     this.pendingChoose = -1;
