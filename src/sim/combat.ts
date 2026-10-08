@@ -8,7 +8,7 @@ export function waveScale(n: number): EnemyScale {
   // After wave 20 enemies grow exponentially so a maxed build can't idle forever.
   const late = Math.max(0, n - 20);
   return {
-    hp: (1 + 0.12 * w + 0.01 * w * w) * Math.pow(1.07, late),
+    hp: (1 + 0.15 * w + 0.012 * w * w) * Math.pow(1.07, late),
     dmg: (1 + 0.05 * w + 0.0025 * w * w) * Math.pow(1.03, late),
     speed: Math.min(1.35, 1 + 0.007 * w),
   };

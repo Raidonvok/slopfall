@@ -14,6 +14,15 @@ function spawnPoint(s: GameState, target: Player, dist: number): [number, number
   return [target.x + Math.cos(a) * d, target.y + Math.sin(a) * d];
 }
 
+/**
+ * Extra HP for bosses on top of the normal wave scaling. It grows with the
+ * wave because builds grow much faster than a linear curve: a typical build
+ * should need roughly 30-45 s for a boss.
+ */
+export function bossHpFactor(n: number): number {
+  return n <= 10 ? Math.max(0.6, 0.2 * n - 0.1) : 1.9 + 0.12 * (n - 10);
+}
+
 export function startWave(s: GameState, n: number): void {
   const w = s.wave;
   w.n = n;
@@ -29,7 +38,7 @@ export function startWave(s: GameState, n: number): void {
   const ids = [BOSS_ORDER[k % BOSS_ORDER.length]];
   if (n >= 20) ids.push(BOSS_ORDER[(k + 1) % BOSS_ORDER.length]);
   const sc = waveScale(n);
-  const hpMul = sc.hp * 0.6 * (ids.length > 1 ? 0.75 : 1) * alive.length;
+  const hpMul = sc.hp * bossHpFactor(n) * (ids.length > 1 ? 0.75 : 1) * alive.length;
   for (const id of ids) {
     const [x, y] = spawnPoint(s, pick(s, alive), 600);
     const e = spawnEnemy(s, id, x, y, { hp: hpMul, dmg: sc.dmg, speed: 1 });
