@@ -1,0 +1,33 @@
+# Nightfall Survivors
+
+Browser-based 2D survivor roguelite (Vampire Survivors style) built with TypeScript + Canvas 2D. No runtime dependencies and no image assets — everything is drawn procedurally.
+
+```bash
+npm install
+npm run dev      # play at http://localhost:3064
+npm run test     # simulation tests (determinism, waves, level-ups)
+npm run build    # type-check + production build into dist/
+npm run preview  # serve the production build on port 3064
+```
+
+Both the dev server and `preview` listen on all interfaces on port **3064** (see `vite.config.ts`).
+
+## Hosting
+Every push to `main` runs `.github/workflows/deploy.yml`: it installs, runs the tests, builds and publishes `dist/` to GitHub Pages at **https://cucu0628.github.io/slopfall/**. The game is a static site, so `dist/` can also be served by any web server.
+
+## Controls
+WASD / arrows move · mouse aims · Space or right click uses your hero's ability · Shift dashes · 1–3 picks a level-up · Esc pauses · M mutes.
+
+## Content
+- **6 heroes**, each with a starting weapon, a passive and an active ability (Knight, Mage, Ranger, Necromancer, Engineer, Berserker).
+- **10 weapons** (8 levels each). At max level each one **evolves** when you open a chest while owning its paired perk.
+- **12 perks**; max 6 weapon + 6 perk slots.
+- **9 enemy types** + elites, **4 bosses** every 5th wave (two at once from wave 20), endless scaling waves.
+
+## Architecture (multiplayer-ready)
+- `src/sim/` is a pure, deterministic simulation: no DOM, no `Math.random`/`Date.now`, seeded RNG stored in the state, fixed 60 Hz `step(state, inputs)`.
+- `GameState` is plain JSON-serializable data with a `players[]` array; every player decision (movement, aim, ability, level-up choice) is an `InputCmd`.
+- The sim emits `events[]`; the client (`src/client/`) turns them into particles, sounds and UI.
+- Content (heroes, weapons, perks, enemies) lives in data tables under `src/sim/content/`.
+
+To add multiplayer later, run `src/sim` on a server (or in lockstep on every client), collect each player's `InputCmd` per tick, and broadcast inputs or state snapshots. For co-op, set `cfg.pauseOnLevelUp = false`.

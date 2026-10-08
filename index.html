@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nightfall Survivors</title>
+    <link rel="stylesheet" href="/src/client/ui/style.css" />
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <div id="ui">
+      <section id="screen-menu" class="screen">
+        <div class="menu-box">
+          <h1>NIGHTFALL<span>SURVIVORS</span></h1>
+          <button id="btn-play" class="btn primary">PLAY</button>
+          <div class="controls">
+            <div><kbd>WASD</kbd> / <kbd>↑↓←→</kbd> move</div>
+            <div><kbd>Mouse</kbd> aim</div>
+            <div><kbd>Space</kbd> / <kbd>Right click</kbd> ability</div>
+            <div><kbd>Shift</kbd> dash</div>
+            <div><kbd>Esc</kbd> pause · <kbd>M</kbd> mute</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="screen-chars" class="screen hidden">
+        <h2>Choose your hero</h2>
+        <div id="char-grid" class="char-grid"></div>
+        <button id="btn-back" class="btn">Back</button>
+      </section>
+
+      <section id="screen-levelup" class="screen overlay hidden">
+        <h2 class="glow-blue">LEVEL UP!</h2>
+        <div id="levelup-cards" class="cards"></div>
+        <p class="hint">Press <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> or click</p>
+      </section>
+
+      <section id="screen-pause" class="screen overlay hidden">
+        <h2>PAUSED</h2>
+        <div class="pause-cols">
+          <div><h3>Stats</h3><table id="pause-stats" class="stats"></table></div>
+          <div><h3>Arsenal</h3><div id="pause-arsenal" class="arsenal"></div></div>
+        </div>
+        <div class="row">
+          <button id="btn-resume" class="btn primary">Resume</button>
+          <button id="btn-quit" class="btn">Quit to menu</button>
+        </div>
+      </section>
+
+      <section id="screen-over" class="screen overlay hidden">
+        <h2 class="glow-red">YOU HAVE FALLEN</h2>
+        <div id="over-summary" class="summary"></div>
+        <h3>Damage dealt</h3>
+        <table id="over-damage" class="stats damage"></table>
+        <div class="row">
+          <button id="btn-retry" class="btn primary">Retry</button>
+          <button id="btn-change" class="btn">Change hero</button>
+          <button id="btn-menu" class="btn">Main menu</button>
+        </div>
+      </section>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

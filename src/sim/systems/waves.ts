@@ -1,0 +1,84 @@
+import { BOSS_ORDER, ENEMIES, WAVE_ENEMY_IDS } from '../content/enemies';
+import { waveScale } from '../combat';
+import { spawnEnemy } from '../entities';
+import { pick, rand, randInt, randRange, weightedPick } from '../rng';
+import type { GameState, Player } from '../types';
+import { initBoss } from './bosses';
+
+export const ENEMY_CAP = 500;
+export const BOSS_EVERY = 5;
+
+function spawnPoint(s: GameState, target: Player, dist: number): [number, number] {
+  const a = rand(s) * Math.PI * 2;
+  const d = dist + rand(s) * 80;
+  return [target.x + Math.cos(a) * d, target.y + Math.sin(a) * d];
+}
+
+export function startWave(s: GameState, n: number): void {
+  const w = s.wave;
+  w.n = n;
+  w.timer = s.cfg.waveDuration;
+  w.bossWave = n % BOSS_EVERY === 0;
+  w.eliteSpawned = false;
+  s.events.push({ t: 'wave', n, boss: w.bossWave });
+  if (!w.bossWave) return;
+
+  const alive = s.players.filter((p) => !p.dead);
+  if (alive.length === 0) return;
+  const k = n / BOSS_EVERY - 1;
+  const ids = [BOSS_ORDER[k % BOSS_ORDER.length]];
+  if (n >= 20) ids.push(BOSS_ORDER[(k + 1) % BOSS_ORDER.length]);
+  const sc = waveScale(n);
+  const hpMul = sc.hp * 0.6 * (ids.length > 1 ? 0.75 : 1) * alive.length;
+  for (const id of ids) {
+    const [x, y] = spawnPoint(s, pick(s, alive), 600);
+    const e = spawnEnemy(s, id, x, y, { hp: hpMul, dmg: sc.dmg, speed: 1 });
+    initBoss(e);
+    s.events.push({ t: 'boss', name: ENEMIES[id].name });
+  }
+}
+
+export function updateWaves(s: GameState, dt: number): void {
+  const w = s.wave;
+  if (w.bossWave) {
+    if (!s.enemies.some((e) => e.boss && !e.dead)) startWave(s, w.n + 1);
+  } else {
+    w.timer -= dt;
+    if (w.timer <= 0) startWave(s, w.n + 1);
+  }
+
+  const alive = s.players.filter((p) => !p.dead);
+  if (alive.length === 0) return;
+  const sc = waveScale(w.n);
+  const rate = (1.8 + 0.8 * w.n + 0.035 * w.n * w.n) * (w.bossWave ? 0.35 : 1) * (0.6 + 0.4 * alive.length);
+  w.spawnAcc += rate * dt;
+
+  const types = WAVE_ENEMY_IDS.filter((id) => ENEMIES[id].unlock <= w.n);
+  let live = 0;
+  for (const e of s.enemies) if (!e.dead) live++;
+
+  while (w.spawnAcc > 0 && live < ENEMY_CAP) {
+    const type = weightedPick(s, types, (id) => 1 + (ENEMIES[id].cost >= 3 ? w.n * 0.04 : 0));
+    const def = ENEMIES[type];
+    const count = randInt(s, def.group[0], def.group[1]);
+    w.spawnAcc -= def.cost * count;
+    const target = pick(s, alive);
+    const [cx, cy] = spawnPoint(s, target, 780);
+    const eliteChance = Math.min(0.01, 0.0005 * w.n);
+    for (let i = 0; i < count; i++) {
+      spawnEnemy(s, type, cx + randRange(s, -45, 45), cy + randRange(s, -45, 45), sc, rand(s) < eliteChance);
+      live++;
+    }
+  }
+
+  // One mid-wave elite from wave 3. Only the "champion" (once per boss
+  // cycle) carries a chest, so chests stay rare: one champion + one boss
+  // chest every 5 waves.
+  if (!w.bossWave && !w.eliteSpawned && w.n >= 3 && w.timer < s.cfg.waveDuration * 0.5) {
+    w.eliteSpawned = true;
+    const type = pick(s, types.filter((t) => t !== 'swarm'));
+    const [x, y] = spawnPoint(s, pick(s, alive), 800);
+    const e = spawnEnemy(s, type, x, y, sc, true);
+    e.chest = w.n % BOSS_EVERY === 3;
+  }
+}
