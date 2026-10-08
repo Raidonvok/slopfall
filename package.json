@@ -2,6 +2,9 @@
   "name": "roug",
   "private": true,
   "version": "0.1.0",
+  "description": "Nightfall Survivors – browser survivor roguelite",
+  "author": "cucu0628",
+  "license": "UNLICENSED",
   "type": "module",
   "scripts": {
     "dev": "vite",

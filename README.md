@@ -26,6 +26,9 @@ On phones and tablets on-screen controls appear automatically: drag on the left 
 - **12 perks**; max 6 weapon + 6 perk slots.
 - **9 enemy types** + elites, **6 bosses** every 5th wave (two at once from wave 20), endless scaling waves, anti-AFK meteors.
 
+## License
+© 2026 cucu0628. **All rights reserved.** The code is published for viewing only; copying, modifying, re-hosting or any other use requires written permission. See [LICENSE](LICENSE).
+
 ## Architecture (multiplayer-ready)
 - `src/sim/` is a pure, deterministic simulation: no DOM, no `Math.random`/`Date.now`, seeded RNG stored in the state, fixed 60 Hz `step(state, inputs)`.
 - `GameState` is plain JSON-serializable data with a `players[]` array; every player decision (movement, aim, ability, level-up choice) is an `InputCmd`.
