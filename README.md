@@ -6,6 +6,7 @@ Browser-based 2D survivor roguelite (Vampire Survivors style) built with TypeScr
 npm install
 npm run dev      # play at http://localhost:3064
 npm run test     # simulation tests (determinism, waves, level-ups)
+npm run typecheck  # strict TypeScript check
 npm run build    # type-check + production build into dist/
 npm run preview  # serve the production build on port 3064
 ```
@@ -29,6 +30,19 @@ On phones and tablets on-screen controls appear automatically: drag on the left 
 
 ## License
 © 2026 cucu0628. **All rights reserved.** The code is published for viewing only; copying, modifying, re-hosting or any other use requires written permission. See [LICENSE](LICENSE).
+
+## Contributing
+Bug reports and ideas are welcome through the issue templates (**Bug report** / **Feature request**).
+
+Pull requests are welcome too: read [AGENT.md](AGENT.md) first (architecture, rules and step-by-step recipes for new weapons, perks, enemies, bosses and heroes). Every PR is checked by CI (`npm run typecheck`, `npm test`, build). By opening a pull request you agree to the contribution terms in [LICENSE](LICENSE).
+
+## Project structure
+```
+src/sim/        deterministic game rules (no DOM) – content/ data tables, systems/ per-tick logic,
+                systems/weapons/ and systems/bosses/ one file per weapon / boss
+src/client/     browser side – app flow, input/touch, audio, render/ (entities/, heroes/), ui/ (screens, styles/)
+tests/          vitest suites by topic
+```
 
 ## Architecture (multiplayer-ready)
 - `src/sim/` is a pure, deterministic simulation: no DOM, no `Math.random`/`Date.now`, seeded RNG stored in the state, fixed 60 Hz `step(state, inputs)`.

@@ -1,0 +1,86 @@
+/* Character select screen. */
+
+/* Character select */
+.char-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 300px));
+  gap: 16px;
+  max-width: 100%;
+}
+
+@media (max-width: 960px) {
+  .char-grid {
+    grid-template-columns: repeat(2, minmax(0, 300px));
+  }
+}
+
+@media (max-width: 620px) {
+  .char-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.char-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+
+.char-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--c);
+  box-shadow: 0 0 26px color-mix(in srgb, var(--c) 45%, transparent);
+}
+
+.char-card .top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.char-card canvas {
+  width: 96px;
+  height: 96px;
+  flex: none;
+}
+
+.char-card .name {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--c);
+}
+
+.char-card .title {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.char-card .line {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.char-card .line b {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.char-card .ability {
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 13px;
+}
+
+.char-card .ability strong {
+  color: var(--c);
+}

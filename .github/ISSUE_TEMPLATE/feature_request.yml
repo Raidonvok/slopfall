@@ -1,0 +1,56 @@
+name: Feature request
+description: Suggest a new hero, weapon, boss, perk or any other improvement
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas are welcome! Please describe what you would like and why it would make the game better.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - New hero
+        - Weapon / evolution
+        - Perk / upgrade
+        - Enemy / boss
+        - Map / visuals
+        - Balance
+        - Mobile / controls
+        - UI / menus
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like?
+      description: Describe the feature. How would it work in a run?
+      placeholder: A Paladin hero whose ability heals and shields nearby allies...
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why?
+      description: What problem does it solve or what would it add to the game?
+    validations:
+      required: true
+  - type: textarea
+    id: balance
+    attributes:
+      label: Numbers / balance (optional)
+      description: Damage, cooldowns, wave it should appear at, how it compares to existing content.
+  - type: textarea
+    id: references
+    attributes:
+      label: Mockups or references (optional)
+      description: Sketches, screenshots or examples from other games.
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to implement this myself in a pull request.

@@ -6,9 +6,12 @@ drawn by the code, audio and documentation (the "Software"), is the exclusive
 property of the copyright holder.
 
 You may:
-  - play the game at its official address (https://game.asked.hu/), and
+  - play the game at its official address (https://game.asked.hu/),
   - view the source code in this repository for personal, non-commercial
-    reference.
+    reference, and
+  - fork and modify the source code solely to prepare a contribution (pull
+    request) to this repository. Such forks may not be published, hosted or
+    used for any other purpose.
 
 You may NOT, without the prior written permission of the copyright holder:
   - copy, reproduce or redistribute the Software or any part of it;
@@ -20,7 +23,12 @@ You may NOT, without the prior written permission of the copyright holder:
   - remove or alter this notice or any copyright notice shown in the game.
 
 Forking this repository on GitHub, where GitHub's Terms of Service allow it,
-does not grant any of the rights listed above.
+does not grant any rights beyond those listed above.
+
+Contributions: by submitting a contribution (for example a pull request) you
+confirm that it is your own work and you grant the copyright holder a
+perpetual, worldwide, royalty-free, irrevocable license to use, modify,
+distribute and relicense it as part of the Software.
 
 To request permission, contact the copyright holder through
 https://github.com/cucu0628.

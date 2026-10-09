@@ -1,6 +1,6 @@
 import { biomeAt, CHUNK, getChunk } from '../../sim/map';
 import type { GameState, Player } from '../../sim/types';
-import { MINIMAP_RGB } from './world';
+import { MINIMAP_RGB } from './map';
 
 type Ctx = CanvasRenderingContext2D;
 

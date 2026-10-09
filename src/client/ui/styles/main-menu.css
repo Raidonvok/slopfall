@@ -1,0 +1,50 @@
+/* Main menu: copyright credit and the Continue button. */
+
+/* ---------------------------------------------------------------- credit */
+
+.credit {
+  position: absolute;
+  right: calc(16px + env(safe-area-inset-right));
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  text-decoration: none;
+  opacity: 0.85;
+}
+
+.credit:hover {
+  color: var(--text);
+  opacity: 1;
+}
+
+/* ---------------------------------------------------------------- continue */
+
+.btn.hidden {
+  display: none;
+}
+
+.btn.continue {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(180deg, #34c38f, #1f8f68);
+  border-color: #7df0c4;
+  box-shadow: 0 0 24px rgba(52, 195, 143, 0.45);
+}
+
+.btn.continue.hidden {
+  display: none;
+}
+
+.btn.continue:hover {
+  box-shadow: 0 0 36px rgba(52, 195, 143, 0.75);
+}
+
+#continue-info {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  opacity: 0.9;
+}

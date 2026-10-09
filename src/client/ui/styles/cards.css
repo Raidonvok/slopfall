@@ -1,0 +1,127 @@
+/* Level-up / evolution cards, perk rarity. */
+
+/* Level up cards */
+.cards {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.card {
+  width: 230px;
+  min-height: 210px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 14px;
+  border-radius: 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  text-align: center;
+  animation: pop 0.25s ease-out backwards;
+  transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+
+.card:nth-child(2) {
+  animation-delay: 0.05s;
+}
+
+.card:nth-child(3) {
+  animation-delay: 0.1s;
+}
+
+.card:hover {
+  transform: translateY(-4px) scale(1.02);
+  border-color: var(--c);
+  box-shadow: 0 0 28px color-mix(in srgb, var(--c) 50%, transparent);
+}
+
+.card .icon {
+  font-size: 40px;
+  line-height: 1;
+  color: var(--c);
+  text-shadow: 0 0 14px var(--c);
+}
+
+.card .cname {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.card .tag {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+}
+
+.card .tag.new {
+  background: var(--gold);
+  color: #1b1405;
+}
+
+.card .desc {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.card .evo {
+  font-size: 12px;
+  color: var(--gold);
+}
+
+.card.locked {
+  cursor: default;
+  opacity: 0.55;
+  filter: grayscale(0.7);
+}
+
+.card.locked:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--line);
+}
+
+.card {
+  position: relative;
+}
+
+.card .rarity {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  color: var(--c);
+}
+
+.card.rarity-rare {
+  border-color: color-mix(in srgb, var(--c) 70%, transparent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--c) 30%, transparent);
+}
+
+.card.rarity-epic {
+  border-color: var(--c);
+  box-shadow: 0 0 26px color-mix(in srgb, var(--c) 55%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 18%, var(--panel)), var(--panel));
+}
+
+.card .key {
+  margin-top: auto;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.95);
+  }
+}

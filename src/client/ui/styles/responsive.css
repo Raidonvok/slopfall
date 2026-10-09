@@ -1,0 +1,136 @@
+/* Small screens and phones. */
+
+/* small / phone screens */
+@media (max-height: 520px), (max-width: 620px) {
+  .card {
+    width: min(300px, 88vw);
+    min-height: 0;
+    padding: 12px;
+    gap: 5px;
+  }
+
+  .card .icon {
+    font-size: 30px;
+  }
+
+  .menu-box {
+    gap: 18px;
+  }
+
+  .pause-cols {
+    gap: 14px;
+    padding: 12px;
+  }
+}
+
+@media (max-height: 520px) {
+  .card {
+    width: 190px;
+  }
+}
+
+/* phones: compact character select and pause menu */
+@media (max-width: 620px), (max-height: 520px) {
+  .screen {
+    --gap: 12px;
+  }
+
+  h2 {
+    font-size: 24px;
+  }
+
+  .char-card {
+    padding: 10px 12px;
+    gap: 3px;
+  }
+
+  .char-card canvas {
+    width: 64px;
+    height: 64px;
+  }
+
+  .char-card .name {
+    font-size: 18px;
+  }
+
+  .char-card .line,
+  .char-card .ability {
+    font-size: 12px;
+  }
+
+  .char-card .ability {
+    padding: 6px 8px;
+  }
+
+  .pause-cols {
+    width: min(100%, 520px);
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .stats {
+    font-size: 13px;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .stats td {
+    padding: 2px 6px;
+  }
+
+  .arsenal {
+    font-size: 13px;
+    min-width: 0;
+    gap: 4px;
+  }
+
+  .btn.primary {
+    font-size: 18px;
+    padding: 12px 34px;
+  }
+}
+
+/* small screens: stats and arsenal in two columns so the pause menu stays short */
+@media (max-width: 620px), (max-height: 520px) {
+  #pause-stats tbody {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 16px;
+  }
+
+  #pause-stats tr {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .arsenal {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 12px;
+  }
+
+  .arsenal .it {
+    min-width: 0;
+    gap: 5px;
+  }
+
+  .arsenal .it span:nth-child(2) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .arsenal .ic {
+    width: 20px;
+    font-size: 15px;
+  }
+}
+
+/* landscape phones: stats and arsenal side by side */
+@media (max-height: 520px) and (min-width: 621px) {
+  .pause-cols {
+    flex-direction: row;
+    width: auto;
+    max-width: 100%;
+  }
+}

@@ -1,13 +1,13 @@
 import type { GameState, Player } from '../../sim/types';
 import type { Effects } from './effects';
 import {
-  drawEnemy, drawEnemyProjectile, drawHazard, drawMinion, drawPickup, drawPlayer, drawProjectile,
-  drawTurret, drawZone, enemyColor, eprojColor, pickupColor, projectileColor,
-} from './draw';
+  drawEnemy, drawEnemyProjectile, drawHazard, drawMinion, drawPickup, drawProjectile, drawTurret, drawZone, enemyColor, eprojColor, pickupColor, projectileColor,
+} from './entities';
+import { drawPlayer } from './heroes';
 import { drawHud } from './hud';
 import { glow, rgba } from './sprites';
 import { CHARACTERS } from '../../sim/content/characters';
-import { WorldRenderer } from './world';
+import { WorldRenderer } from './map';
 import { Minimap } from './minimap';
 
 const VIEW_W = 1400;
