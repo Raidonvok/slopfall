@@ -1,10 +1,12 @@
 import { baseWeaponStats, WEAPONS, weaponStats, type WStats } from '../content/weapons';
-import { damageEnemy, healPlayer, isOverclocked, isRaging, slowEnemy } from '../combat';
+import { damageEnemy, healPlayer, ignite, isOverclocked, isRaging, slowEnemy } from '../combat';
 import { addProjectile, addZone } from '../entities';
 import { resolveObstacles } from '../map';
 import { rand } from '../rng';
 import { forEnemiesInCircle, nearestEnemy } from '../spatial';
 import type { Enemy, GameState, Player, Projectile, WeaponInst } from '../types';
+
+const METEOR_BURN_TIME = 4;
 
 const TAU = Math.PI * 2;
 
@@ -369,6 +371,7 @@ export function updateZones(s: GameState, dt: number): void {
       forEnemiesInCircle(z.x, z.y, z.r, (e) => {
         const dx = e.x - z.x, dy = e.y - z.y, d = Math.hypot(dx, dy) || 1;
         damageEnemy(s, e, z.dmg, owner, z.src, dx / d, dy / d, z.knock);
+        if (z.burn > 0) ignite(e, owner.id, z.burn, METEOR_BURN_TIME);
       });
       if (z.kind === 'boom') {
         s.events.push({ t: 'explode', x: z.x, y: z.y, r: z.r, color: '#ffb347' });

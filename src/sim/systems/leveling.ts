@@ -1,5 +1,5 @@
 import { ABILITY_MAX_LEVEL, CHARACTERS } from '../content/characters';
-import { BONUSES, BONUS_IDS, PERKS, PERK_IDS } from '../content/perks';
+import { BONUSES, BONUS_IDS, PERKS, PERK_IDS, RARITIES } from '../content/perks';
 import { MAX_WEAPON_LEVEL, WEAPONS, WEAPON_IDS } from '../content/weapons';
 import { healPlayer } from '../combat';
 import { rand, weightedPick } from '../rng';
@@ -15,11 +15,13 @@ export function computeStats(p: Player): Stats {
   const c = CHARACTERS[p.charId];
   const s: Stats = {
     might: 1, cooldown: 1, speed: c.speed, maxHp: c.hp, regen: 0, armor: 0, magnet: 75,
-    area: 1, duration: 1, amount: 0, crit: 0.05, growth: 1, lifesteal: 0,
+    area: 1, duration: 1, amount: 0, crit: 0.05, growth: 1, lifesteal: 0, lifestealCap: 0, dr: 0, burn: 0,
   };
   for (const k of Object.keys(c.mods) as (keyof Stats)[]) s[k] += c.mods[k] ?? 0;
-  for (const perk of p.perks) PERKS[perk.id].apply(s, perk.level);
+  for (const perk of p.perks) PERKS[perk.id].apply(s, perk.power);
   for (const id in p.bonus) BONUSES[id].apply(s, p.bonus[id]);
+  s.dr = Math.min(0.6, s.dr);
+  s.burn = Math.min(1, s.burn);
   return s;
 }
 
@@ -40,7 +42,7 @@ export function createPlayer(id: string, charId: string, x: number, y: number): 
     perks: [],
     abilityLevel: 1, abilityCd: 0, abilityMaxCd: c.ability.cd, abilityT: 0,
     invuln: 0, hurtT: 0, dashT: 0, dashX: 0, dashY: 0, dashCd: 0, dashMaxCd: 0, bonus: {},
-    healBudget: 0, idleT: 0, anchorX: x, anchorY: y, skyfallCd: 0, skyfallN: 0, slowT: 0, evoQueue: [],
+    healBudget: 0, lsBudget: 0, idleT: 0, anchorX: x, anchorY: y, skyfallCd: 0, skyfallN: 0, slowT: 0, evoQueue: [],
     pendingLevels: 0, choices: null, dead: false, kills: 0, dmgDealt: {},
   };
   p.stats = computeStats(p);
@@ -73,9 +75,9 @@ function upgradePool(p: Player): UpgradeOption[] {
   for (const id of PERK_IDS) {
     const k = p.perks.find((x) => x.id === id);
     if (k) {
-      if (k.level < PERKS[id].max) pool.push({ kind: 'perk', id, level: k.level + 1 });
+      if (k.level < PERKS[id].max) pool.push({ kind: 'perk', id, level: k.level + 1, rarity: 0 });
     } else if (p.perks.length < MAX_SLOTS) {
-      pool.push({ kind: 'perk', id, level: 1 });
+      pool.push({ kind: 'perk', id, level: 1, rarity: 0 });
     }
   }
   if (p.abilityLevel < ABILITY_MAX_LEVEL) pool.push({ kind: 'ability', id: 'ability', level: p.abilityLevel + 1 });
@@ -83,6 +85,20 @@ function upgradePool(p: Player): UpgradeOption[] {
 }
 
 const optionWeight = (o: UpgradeOption) => (o.kind === 'ability' ? 1.1 : o.level > 1 ? 1.4 : 1);
+
+function rollRarity(s: GameState): number {
+  let r = rand(s);
+  for (let i = RARITIES.length - 1; i > 0; i--) {
+    if (r < RARITIES[i].chance) return i;
+    r -= RARITIES[i].chance;
+  }
+  return 0;
+}
+
+/** Bonus shards that have not hit their stack limit yet. */
+function availableBonuses(p: Player): string[] {
+  return BONUS_IDS.filter((id) => (p.bonus[id] ?? 0) < (BONUSES[id].max ?? Infinity));
+}
 
 function bonusOption(p: Player, id: string): UpgradeOption {
   return { kind: 'bonus', id, level: (p.bonus[id] ?? 0) + 1 };
@@ -98,11 +114,11 @@ export function rollChoices(s: GameState, p: Player, count = 3): UpgradeOption[]
   const out: UpgradeOption[] = [];
   while (out.length < count && pool.length > 0) {
     const o = weightedPick(s, pool, optionWeight);
-    out.push(o);
     pool.splice(pool.indexOf(o), 1);
+    out.push(o.kind === 'perk' && PERKS[o.id].rarity ? { ...o, rarity: rollRarity(s) } : o);
   }
   if (out.length < count) {
-    const bonus = [...BONUS_IDS];
+    const bonus = availableBonuses(p);
     while (out.length < count && bonus.length > 0) {
       const id = bonus.splice(Math.floor(rand(s) * bonus.length), 1)[0];
       out.push(bonusOption(p, id));
@@ -119,8 +135,13 @@ export function applyOption(s: GameState, p: Player, o: UpgradeOption): void {
     else p.weapons.push({ id: o.id, level: 1, evolved: false, evo: '', cd: 0.2, t: 0, r: 0 });
   } else if (o.kind === 'perk') {
     const k = p.perks.find((x) => x.id === o.id);
-    if (k) k.level = o.level;
-    else p.perks.push({ id: o.id, level: 1 });
+    const gain = RARITIES[o.rarity]?.mul ?? 1;
+    if (k) {
+      k.level = o.level;
+      k.power += gain;
+    } else {
+      p.perks.push({ id: o.id, level: 1, power: gain });
+    }
     refreshStats(p);
   } else if (o.kind === 'ability') {
     p.abilityLevel = o.level;
@@ -180,7 +201,7 @@ export function updateLeveling(s: GameState, p: Player): void {
 
 export function optionName(o: UpgradeOption): string {
   if (o.kind === 'weapon') return `${WEAPONS[o.id].name} ${o.level > 1 ? 'Lv ' + o.level : '(new)'}`;
-  if (o.kind === 'perk') return `${PERKS[o.id].name} ${o.level > 1 ? 'Lv ' + o.level : '(new)'}`;
+  if (o.kind === 'perk') return `${o.rarity > 0 ? RARITIES[o.rarity].name + ' ' : ''}${PERKS[o.id].name} ${o.level > 1 ? 'Lv ' + o.level : '(new)'}`;
   if (o.kind === 'ability') return `Ability Lv ${o.level}`;
   if (o.kind === 'evo') return WEAPONS[o.id].evos[o.level].name;
   if (o.kind === 'bonus') return BONUSES[o.id].name;
@@ -203,9 +224,15 @@ export function openChest(s: GameState, p: Player, big: boolean): void {
   for (let i = 0; i < count; i++) {
     const pool = upgradePool(p).filter((o) => o.level > 1);
     const opts = pool.length > 0 ? pool : upgradePool(p);
+    const bonus = availableBonuses(p);
     const o = opts.length > 0
       ? opts[Math.floor(rand(s) * opts.length)]
-      : bonusOption(p, BONUS_IDS[Math.floor(rand(s) * BONUS_IDS.length)]);
+      : bonus.length > 0 ? bonusOption(p, bonus[Math.floor(rand(s) * bonus.length)]) : null;
+    if (!o) {
+      healPlayer(s, p, p.stats.maxHp * 0.3);
+      items.push('Heal');
+      continue;
+    }
     applyOption(s, p, o);
     items.push(optionName(o));
   }

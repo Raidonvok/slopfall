@@ -5,6 +5,8 @@ import { DT, type GameState, type InputCmd, type SimEvent } from '../sim/types';
 import { createGame, isFrozen, step } from '../sim/world';
 import type { Sound } from './audio';
 import type { Input } from './input';
+import { AIM_DRAG } from './touch';
+import { METEOR_RANGE } from '../sim/systems/abilities';
 import { Effects } from './render/effects';
 import type { Renderer } from './render/renderer';
 
@@ -36,10 +38,11 @@ export class Session {
     private input: Input | null,
     private sound: Sound | null,
     private hooks: SessionHooks = {},
-    seed = (Math.random() * 2 ** 31) | 0,
+    initial: GameState | null = null,
   ) {
     const demo = !input;
-    this.state = createGame(seed, [{ id: LOCAL_ID, charId }], demo ? { godMode: true } : {});
+    const seed = (Math.random() * 2 ** 31) | 0;
+    this.state = initial ?? createGame(seed, [{ id: LOCAL_ID, charId }], demo ? { godMode: true } : {});
   }
 
   start(): void {
@@ -70,12 +73,42 @@ export class Session {
     const [sx, sy] = this.renderer.screenOf(me.x, me.y);
     const cmd = this.input.sample(sx, sy, this.renderer.scale);
     if (this.input.usingTouch) {
-      // no mouse on touch screens: aim at the nearest enemy, else straight ahead
-      const e = nearestEnemy(s, me.x, me.y, 700);
-      cmd.ax = e ? e.x - me.x : me.fx * 120;
-      cmd.ay = e ? e.y - me.y : me.fy * 120;
+      const cast = this.input.lastCast;
+      if (cast?.dragged) {
+        // aimed by dragging the ability button
+        [cmd.ax, cmd.ay] = this.touchAimOffset(cast.dx, cast.dy);
+      } else {
+        // no mouse on touch screens: aim at the nearest enemy, else straight ahead
+        const e = nearestEnemy(s, me.x, me.y, 700);
+        cmd.ax = e ? e.x - me.x : me.fx * 120;
+        cmd.ay = e ? e.y - me.y : me.fy * 120;
+      }
     }
     return cmd;
+  }
+
+  /**
+   * Ability-button drag (px) to a world offset; full drag = max meteor range,
+   * kept inside the visible area so the target is always on screen.
+   */
+  private touchAimOffset(dx: number, dy: number): [number, number] {
+    const k = METEOR_RANGE / AIM_DRAG;
+    const r = this.renderer;
+    const hw = (r.w / 2 / r.scale) * 0.9, hh = (r.h / 2 / r.scale) * 0.9;
+    return [Math.max(-hw, Math.min(hw, dx * k)), Math.max(-hh, Math.min(hh, dy * k))];
+  }
+
+  /** Target marker while the player drags the ability button. */
+  private updateAimPreview(): void {
+    const t = this.input?.touch;
+    const me = this.state.players[0];
+    if (!t?.aiming || !t.aimDragged || me.dead) {
+      this.renderer.aimPreview = null;
+      return;
+    }
+    const [ax, ay] = this.touchAimOffset(t.aimDX, t.aimDY);
+    const r = 170 * me.stats.area * (1 + 0.12 * (me.abilityLevel - 1));
+    this.renderer.aimPreview = { x: me.x + ax, y: me.y + ay, r };
   }
 
   private botCommand(): InputCmd {
@@ -117,6 +150,7 @@ export class Session {
       this.fx.update(real);
     }
 
+    if (this.input) this.updateAimPreview();
     const alpha = this.paused || isFrozen(s) || s.gameOver ? 1 : this.acc / DT;
     this.renderer.draw(s, LOCAL_ID, alpha, this.fx, !!this.input);
     this.hooks.onFrame?.(s);
@@ -137,7 +171,8 @@ export class Session {
       switch (ev.t) {
         case 'hit':
           if (Math.abs(ev.x - me.x) < 900 && Math.abs(ev.y - me.y) < 600) {
-            fx.text(ev.x, ev.y, String(ev.v), ev.crit ? '#ffd166' : '#ffffff', ev.crit ? 18 : 13);
+            if (ev.dot) fx.text(ev.x, ev.y, String(ev.v), '#ff9a3d', 11, 0.5);
+            else fx.text(ev.x, ev.y, String(ev.v), ev.crit ? '#ffd166' : '#ffffff', ev.crit ? 18 : 13);
             if (ev.crit) fx.burst(ev.x, ev.y, '#ffd166', 3, 120, 2, 0.3);
           }
           snd?.play('hit');

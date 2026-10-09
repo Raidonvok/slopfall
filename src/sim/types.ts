@@ -28,7 +28,10 @@ export interface Stats {
   amount: number;
   crit: number;
   growth: number;
-  lifesteal: number;
+  lifesteal: number; // fraction of damage dealt healed
+  lifestealCap: number; // max lifesteal healing per second, as a fraction of max HP
+  dr: number; // damage reduction fraction (armor perk)
+  burn: number; // chance to ignite on hit
 }
 
 export interface WeaponInst {
@@ -44,11 +47,12 @@ export interface WeaponInst {
 export interface PerkInst {
   id: string;
   level: number;
+  power: number; // sum of level-ups weighted by rarity
 }
 
 export type UpgradeOption =
   | { kind: 'weapon'; id: string; level: number }
-  | { kind: 'perk'; id: string; level: number }
+  | { kind: 'perk'; id: string; level: number; rarity: number } // rarity index into RARITIES
   | { kind: 'ability'; id: 'ability'; level: number }
   | { kind: 'bonus'; id: string; level: number }
   | { kind: 'evo'; id: string; level: number } // id = weapon id, level = index into its evolutions
@@ -86,6 +90,7 @@ export interface Player {
   dashMaxCd: number;
   bonus: Record<string, number>; // stackable bonus upgrades taken after everything is maxed
   healBudget: number; // necromancer kill-heal limiter
+  lsBudget: number; // lifesteal healing still allowed this second
   idleT: number; // seconds spent near the same spot (anti-AFK)
   anchorX: number;
   anchorY: number;
@@ -133,6 +138,10 @@ export interface Enemy {
   dmgAcc: number;
   intangible: boolean;
   trail: number[]; // body segment positions (x, y pairs) for serpent bosses
+  burnT: number; // remaining burn time
+  burnDps: number; // base damage per second while burning
+  burnTick: number;
+  burnOwner: PlayerId;
   dead: boolean;
 }
 
@@ -183,6 +192,7 @@ export interface Zone {
   arc: number;
   pts: number[];
   hits: Record<number, number>;
+  burn: number; // base burn damage per second applied to enemies hit (0 = none)
   fired: boolean;
   dead: boolean;
 }
@@ -281,7 +291,7 @@ export interface WaveState {
 }
 
 export type SimEvent =
-  | { t: 'hit'; x: number; y: number; v: number; crit: boolean }
+  | { t: 'hit'; x: number; y: number; v: number; crit: boolean; dot: boolean }
   | { t: 'kill'; x: number; y: number; type: string; elite: boolean; boss: boolean; r: number }
   | { t: 'phurt'; pid: PlayerId; v: number }
   | { t: 'pdeath'; pid: PlayerId }

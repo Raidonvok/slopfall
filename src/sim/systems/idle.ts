@@ -14,6 +14,8 @@ const NECRO_HEAL_PER_SEC = 4;
 
 export function updateIdle(s: GameState, p: Player, dt: number): void {
   if (p.charId === 'necro') p.healBudget = Math.min(NECRO_HEAL_PER_SEC, p.healBudget + NECRO_HEAL_PER_SEC * dt);
+  const lsCap = p.stats.maxHp * p.stats.lifestealCap;
+  p.lsBudget = Math.min(lsCap, p.lsBudget + lsCap * dt);
 
   if ((p.x - p.anchorX) ** 2 + (p.y - p.anchorY) ** 2 > IDLE_RADIUS * IDLE_RADIUS) {
     p.anchorX = p.x;
@@ -30,7 +32,7 @@ export function updateIdle(s: GameState, p: Player, dt: number): void {
   p.skyfallCd = SKYFALL_EVERY;
   p.skyfallN++;
   // % of max HP so it matters at any point of the run; armor is added back so it can't be tanked
-  const dmg = p.stats.maxHp * (0.25 + 0.1 * (p.skyfallN - 1)) + p.stats.armor;
+  const dmg = (p.stats.maxHp * (0.25 + 0.1 * (p.skyfallN - 1)) + p.stats.armor) / (1 - p.stats.dr);
   addHazard(s, 'skyfall', { x: p.x, y: p.y, r: SKYFALL_RADIUS, warn: SKYFALL_WARN, life: 0.3, dmg });
   s.events.push({ t: 'sfx', name: 'warn' });
 }

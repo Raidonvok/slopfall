@@ -373,6 +373,31 @@ kbd {
   border-color: var(--line);
 }
 
+.card {
+  position: relative;
+}
+
+.card .rarity {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  color: var(--c);
+}
+
+.card.rarity-rare {
+  border-color: color-mix(in srgb, var(--c) 70%, transparent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--c) 30%, transparent);
+}
+
+.card.rarity-epic {
+  border-color: var(--c);
+  box-shadow: 0 0 26px color-mix(in srgb, var(--c) 55%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 18%, var(--panel)), var(--panel));
+}
+
 .card .key {
   margin-top: auto;
   color: var(--muted);
@@ -748,4 +773,40 @@ body.touch .hint-touch {
 .credit:hover {
   color: var(--text);
   opacity: 1;
+}
+
+/* ---------------------------------------------------------------- continue */
+
+.btn.hidden {
+  display: none;
+}
+
+.btn.continue {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(180deg, #34c38f, #1f8f68);
+  border-color: #7df0c4;
+  box-shadow: 0 0 24px rgba(52, 195, 143, 0.45);
+}
+
+.btn.continue.hidden {
+  display: none;
+}
+
+.btn.continue:hover {
+  box-shadow: 0 0 36px rgba(52, 195, 143, 0.75);
+}
+
+#continue-info {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  opacity: 0.9;
+}
+
+.t-ability.aiming {
+  border-color: #ffb46b;
+  box-shadow: 0 0 22px rgba(255, 150, 60, 0.7);
 }

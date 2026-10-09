@@ -1,5 +1,5 @@
 import { ABILITY_MAX_LEVEL, CHARACTERS, CHARACTER_IDS } from '../../sim/content/characters';
-import { BONUSES, PERKS } from '../../sim/content/perks';
+import { BONUSES, PERKS, RARITIES } from '../../sim/content/perks';
 import { levelDesc, MAX_WEAPON_LEVEL, weaponName, WEAPONS } from '../../sim/content/weapons';
 import type { GameState, Player, UpgradeOption } from '../../sim/types';
 import { drawCharacterBody } from '../render/draw';
@@ -58,7 +58,18 @@ export function buildCharSelect(onPick: (id: string) => void): void {
   }
 }
 
-function optionView(o: UpgradeOption, charId: string): { icon: string; color: string; name: string; tag: string; isNew: boolean; desc: string; evo: string } {
+interface OptionView {
+  icon: string;
+  color: string;
+  name: string;
+  tag: string;
+  isNew: boolean;
+  desc: string;
+  evo: string;
+  rarity?: string;
+}
+
+function optionView(o: UpgradeOption, charId: string): OptionView {
   if (o.kind === 'weapon') {
     const d = WEAPONS[o.id];
     const paths = d.evos.map((e) => `${e.name} (${PERKS[e.perk].name})`).join(' or ');
@@ -69,7 +80,12 @@ function optionView(o: UpgradeOption, charId: string): { icon: string; color: st
   }
   if (o.kind === 'perk') {
     const d = PERKS[o.id];
-    return { icon: d.icon, color: d.color, name: d.name, tag: o.level === 1 ? 'NEW PERK' : `LEVEL ${o.level} / ${d.max}`, isNew: o.level === 1, desc: d.desc, evo: '' };
+    const r = RARITIES[o.rarity] ?? RARITIES[0];
+    return {
+      icon: d.icon, color: o.rarity > 0 ? r.color : d.color, name: d.name,
+      tag: o.level === 1 ? 'NEW PERK' : `LEVEL ${o.level} / ${d.max}`, isNew: o.level === 1,
+      desc: d.desc(r.mul), evo: '', rarity: o.rarity > 0 ? r.name.toUpperCase() : '',
+    };
   }
   if (o.kind === 'ability') {
     const c = CHARACTERS[charId];
@@ -93,9 +109,10 @@ export function buildLevelUp(choices: UpgradeOption[], p: Player, onChoose: (i: 
   $('levelup-title').textContent = evolving ? 'CHOOSE AN EVOLUTION' : 'LEVEL UP!';
   choices.forEach((o, i) => {
     const v = optionView(o, p.charId);
-    const card = el('div', 'card');
+    const card = el('div', `card${v.rarity ? ' rarity-' + v.rarity.toLowerCase() : ''}`);
     card.style.setProperty('--c', v.color);
     card.innerHTML = `
+      ${v.rarity ? `<div class="rarity">${v.rarity}</div>` : ''}
       <div class="icon">${v.icon}</div>
       <div class="cname">${esc(v.name)}</div>
       <div class="tag ${v.isNew ? 'new' : ''}">${v.tag}</div>
@@ -131,6 +148,9 @@ export function buildPause(p: Player): void {
     ['Max HP', `${Math.round(st.maxHp)}`],
     ['Regeneration', `${st.regen.toFixed(1)}/s`],
     ['Armor', `${st.armor}`],
+    ['Damage taken', `-${Math.round(st.dr * 100)}%`],
+    ['Lifesteal', `${(st.lifesteal * 100).toFixed(1)}%`],
+    ['Ignite chance', `${Math.round(st.burn * 100)}%`],
     ['Might', pct(st.might - 1)],
     ['Cooldown', pct(st.cooldown - 1)],
     ['Area', pct(st.area - 1)],

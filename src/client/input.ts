@@ -1,5 +1,5 @@
 import type { InputCmd } from '../sim/types';
-import type { TouchControls } from './touch';
+import type { TouchCast, TouchControls } from './touch';
 
 const UP = ['KeyW', 'ArrowUp', 'KeyZ'];
 const DOWN = ['KeyS', 'ArrowDown'];
@@ -14,6 +14,8 @@ export class Input {
   private rmb = false;
   private pendingChoose = -1;
   touch: TouchControls | null = null;
+  /** Touch aim-and-release cast picked up by the last sample (if any). */
+  lastCast: TouchCast | null = null;
 
   /** True while the on-screen touch controls drive the player (aim is automatic). */
   get usingTouch(): boolean {
@@ -56,6 +58,7 @@ export class Input {
     let mx = (this.any(RIGHT) ? 1 : 0) - (this.any(LEFT) ? 1 : 0);
     let my = (this.any(DOWN) ? 1 : 0) - (this.any(UP) ? 1 : 0);
     const t = this.usingTouch ? this.touch : null;
+    this.lastCast = t ? t.consumeCast() : null;
     if (t && (t.moveX !== 0 || t.moveY !== 0)) {
       mx = t.moveX;
       my = t.moveY;
@@ -64,7 +67,7 @@ export class Input {
       mx, my,
       ax: (this.mouseX - px) / scale,
       ay: (this.mouseY - py) / scale,
-      ability: this.keys.has('Space') || this.rmb || !!t?.ability,
+      ability: this.keys.has('Space') || this.rmb || !!t?.ability || !!this.lastCast,
       dash: this.keys.has('ShiftLeft') || this.keys.has('ShiftRight') || !!t?.dash,
       choose: this.pendingChoose,
     };

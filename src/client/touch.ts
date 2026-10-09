@@ -3,6 +3,15 @@
 // on touch devices (coarse pointer, or after the first real touch).
 
 const STICK_RADIUS = 56;
+/** Drag distance (px) on the ability button that maps to the maximum aim range. */
+export const AIM_DRAG = 80;
+const AIM_DEADZONE = 14;
+
+export interface TouchCast {
+  dx: number; // drag offset in px; meaningful when `dragged`
+  dy: number;
+  dragged: boolean; // false = quick tap, use auto-aim
+}
 
 function isTouchDevice(): boolean {
   return window.matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints > 0 && window.matchMedia('(hover: none)').matches);
@@ -14,6 +23,15 @@ export class TouchControls {
   moveY = 0;
   ability = false;
   dash = false;
+  /** Aim mode: the ability button is dragged to aim and fires on release. */
+  aimMode = false;
+  aiming = false;
+  aimDX = 0;
+  aimDY = 0;
+  private aimId = -1;
+  private aimCX = 0;
+  private aimCY = 0;
+  private cast: TouchCast | null = null;
 
   private root = document.createElement('div');
   private base = document.createElement('div');
@@ -40,7 +58,7 @@ export class TouchControls {
     this.root.append(this.base, this.abilityBtn, this.dashBtn, pause);
     document.body.appendChild(this.root);
 
-    this.hold(this.abilityBtn, (v) => (this.ability = v));
+    this.setupAbility();
     this.hold(this.dashBtn, (v) => (this.dash = v));
     pause.addEventListener('pointerdown', (e) => {
       e.preventDefault();
@@ -93,7 +111,63 @@ export class TouchControls {
     this.stickId = -1;
     this.moveX = this.moveY = 0;
     this.ability = this.dash = false;
+    this.aiming = false;
+    this.cast = null;
+    this.abilityBtn.classList.remove('aiming');
     this.base.classList.remove('shown');
+  }
+
+  /** A finished aim-and-release cast, consumed once by the input sampler. */
+  consumeCast(): TouchCast | null {
+    const c = this.cast;
+    this.cast = null;
+    return c;
+  }
+
+  get aimDragged(): boolean {
+    return Math.hypot(this.aimDX, this.aimDY) > AIM_DEADZONE;
+  }
+
+  private setupAbility(): void {
+    const btn = this.abilityBtn;
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      btn.setPointerCapture(e.pointerId);
+      if (!this.aimMode) {
+        this.ability = true;
+        return;
+      }
+      const r = btn.getBoundingClientRect();
+      this.aimId = e.pointerId;
+      this.aimCX = r.left + r.width / 2;
+      this.aimCY = r.top + r.height / 2;
+      this.aimDX = this.aimDY = 0;
+      this.aiming = true;
+      btn.classList.add('aiming');
+    });
+    btn.addEventListener('pointermove', (e) => {
+      if (!this.aiming || e.pointerId !== this.aimId) return;
+      let dx = e.clientX - this.aimCX, dy = e.clientY - this.aimCY;
+      const d = Math.hypot(dx, dy);
+      if (d > AIM_DRAG) {
+        dx = (dx / d) * AIM_DRAG;
+        dy = (dy / d) * AIM_DRAG;
+      }
+      this.aimDX = dx;
+      this.aimDY = dy;
+    });
+    const release = (fire: boolean) => {
+      this.ability = false;
+      if (!this.aiming) return;
+      this.aiming = false;
+      this.aimId = -1;
+      btn.classList.remove('aiming');
+      if (fire) this.cast = { dx: this.aimDX, dy: this.aimDY, dragged: this.aimDragged };
+    };
+    btn.addEventListener('pointerup', () => release(true));
+    btn.addEventListener('pointercancel', () => release(false));
+    btn.addEventListener('lostpointercapture', () => release(false));
   }
 
   private hold(btn: HTMLElement, set: (v: boolean) => void): void {

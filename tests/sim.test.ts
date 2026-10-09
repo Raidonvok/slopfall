@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { damageEnemy, waveScale } from '../src/sim/combat';
-import { MAX_SLOTS, openChest, rollChoices } from '../src/sim/systems/leveling';
+import { damageEnemy, hurtPlayer, waveScale } from '../src/sim/combat';
+import { PERKS, RARITIES } from '../src/sim/content/perks';
+import { restore, snapshot } from '../src/sim/save';
+import { MAX_SLOTS, openChest, refreshStats, rollChoices } from '../src/sim/systems/leveling';
 import { abilityPower } from '../src/sim/systems/abilities';
 import { getChunk, isBlocked } from '../src/sim/map';
 import { addEnemyProjectile, addHazard, spawnEnemy } from '../src/sim/entities';
@@ -169,7 +171,7 @@ describe('simulation', () => {
     openChest(s, p, false);
     expect(p.evoQueue.length).toBe(0); // no qualifying perk yet
 
-    p.perks.push({ id: 'haste', level: 1 }, { id: 'area', level: 1 });
+    p.perks.push({ id: 'haste', level: 1, power: 1 }, { id: 'area', level: 1, power: 1 });
     openChest(s, p, false);
     step(s, { p1: idle });
     expect(p.choices?.map((o) => o.kind)).toEqual(['evo', 'evo']);
@@ -267,5 +269,104 @@ describe('simulation', () => {
       damageEnemy(s, e, 999, p, 'test');
     }
     expect(p.hp).toBe(14);
+  });
+
+  it('perk rarity scales the effect of a level-up', () => {
+    const s = createGame(40, [{ id: 'p1', charId: 'knight' }]);
+    const p = s.players[0];
+    const idle = { mx: 0, my: 0, ax: 1, ay: 0, ability: false, dash: false, choose: 0 };
+    p.choices = [{ kind: 'perk', id: 'might', level: 1, rarity: 2 }];
+    step(s, { p1: idle });
+    expect(p.perks[0].power).toBeCloseTo(RARITIES[2].mul);
+    expect(p.stats.might).toBeCloseTo(1 + 0.1 * RARITIES[2].mul);
+    // rarity rolls stay mostly common
+    const counts = [0, 0, 0];
+    for (let i = 0; i < 400; i++) {
+      for (const o of rollChoices(s, p)) if (o.kind === 'perk' && PERKS[o.id].rarity) counts[o.rarity]++;
+    }
+    expect(counts[0]).toBeGreaterThan(counts[1]);
+    expect(counts[1]).toBeGreaterThan(counts[2]);
+  });
+
+  it('stops offering Time Shards at their 15 stack limit', () => {
+    const s = createGame(41, [{ id: 'p1', charId: 'knight' }], { godMode: true });
+    const p = s.players[0];
+    for (let i = 0; i < 300; i++) {
+      p.choices = rollChoices(s, p);
+      step(s, { p1: { mx: 0, my: 0, ax: 1, ay: 0, ability: false, dash: false, choose: 0 } });
+    }
+    p.bonus.time = 15;
+    for (let i = 0; i < 100; i++) expect(rollChoices(s, p).some((o) => o.kind === 'bonus' && o.id === 'time')).toBe(false);
+  });
+
+  it('caps lifesteal healing per second and Rage no longer heals', () => {
+    const s = createGame(42, [{ id: 'p1', charId: 'berserker' }]);
+    const p = s.players[0];
+    p.abilityT = 5; // raging
+    p.hp = 10;
+    const e = spawnEnemy(s, 'zombie', p.x + 400, p.y, { hp: 1000, dmg: 1, speed: 0 });
+    damageEnemy(s, e, 500, p, 'test');
+    expect(p.hp).toBe(10); // no lifesteal from Rage
+    p.perks.push({ id: 'lifesteal', level: 5, power: 5 });
+    refreshStats(p);
+    p.hp = 10;
+    p.lsBudget = p.stats.maxHp * p.stats.lifestealCap;
+    for (let i = 0; i < 20; i++) damageEnemy(s, e, 500, p, 'test');
+    const healed = p.hp - 10;
+    expect(healed).toBeGreaterThan(0);
+    expect(healed).toBeLessThanOrEqual(p.stats.maxHp * p.stats.lifestealCap + 1e-6);
+  });
+
+  it('armor reduces damage by a percentage', () => {
+    const s = createGame(43, [{ id: 'p1', charId: 'mage' }]);
+    const p = s.players[0];
+    p.perks.push({ id: 'armor', level: 5, power: 5 });
+    refreshStats(p);
+    expect(p.stats.dr).toBeCloseTo(0.3);
+    const hp = p.hp;
+    hurtPlayer(s, p, 50);
+    expect(hp - p.hp).toBeCloseTo(35);
+  });
+
+  it('ignite sets enemies on fire and burns them over time; the meteor ignites too', () => {
+    const s = createGame(44, [{ id: 'p1', charId: 'mage' }]);
+    const p = s.players[0];
+    p.perks.push({ id: 'burn', level: 5, power: 20 });
+    refreshStats(p);
+    expect(p.stats.burn).toBe(1);
+    const e = spawnEnemy(s, 'zombie', p.x + 600, p.y, { hp: 100, dmg: 1, speed: 0 });
+    damageEnemy(s, e, 10, p, 'test');
+    expect(e.burnT).toBeGreaterThan(0);
+    const before = e.hp;
+    for (let i = 0; i < 60; i++) step(s, { p1: { mx: 0, my: 0, ax: 1, ay: 0, ability: false, dash: false, choose: -1 } });
+    expect(e.hp).toBeLessThan(before);
+    expect(p.dmgDealt.burn).toBeGreaterThan(0);
+
+    const s2 = createGame(45, [{ id: 'p1', charId: 'mage' }]);
+    const p2 = s2.players[0];
+    const target = spawnEnemy(s2, 'zombie', p2.x + 200, p2.y, { hp: 1000, dmg: 1, speed: 0 });
+    for (let i = 0; i < 70; i++) step(s2, { p1: { mx: 0, my: 0, ax: 200, ay: 0, ability: i === 0, dash: false, choose: -1 } });
+    expect(target.burnT).toBeGreaterThan(0);
+  });
+
+  it('saves and restores a run without enemies', () => {
+    const s = createGame(46, [{ id: 'p1', charId: 'ranger' }], { godMode: true });
+    run(s, 2400);
+    const save = JSON.parse(JSON.stringify(snapshot(s, 123)));
+    expect(save.state.enemies.length).toBe(0);
+    const r = restore(save)!;
+    expect(r).not.toBeNull();
+    expect(r.wave.n).toBe(s.wave.n);
+    expect(r.mapSeed).toBe(s.mapSeed);
+    expect(r.players[0].weapons).toEqual(s.players[0].weapons);
+    expect(r.players[0].level).toBe(s.players[0].level);
+    run(r, 600);
+    expect(r.enemies.length).toBeGreaterThan(0);
+    expect(restore({ ...save, v: -1 })).toBeNull();
+
+    const b = createGame(47, [{ id: 'p1', charId: 'knight' }]);
+    startWave(b, 10);
+    const rb = restore(JSON.parse(JSON.stringify(snapshot(b, 0))))!;
+    expect(rb.enemies.some((e) => e.boss)).toBe(true);
   });
 });

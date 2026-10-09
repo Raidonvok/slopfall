@@ -21,6 +21,32 @@ export function enemyColor(e: Enemy): string {
 }
 
 export function drawEnemy(ctx: Ctx, e: Enemy, x: number, y: number, t: number, dx: number, dy: number): void {
+  drawEnemyBody(ctx, e, x, y, t, dx, dy);
+  if (e.burnT > 0) drawFlames(ctx, x, y, e.radius, t);
+}
+
+/** Little flickering flames on a burning enemy. */
+function drawFlames(ctx: Ctx, x: number, y: number, r: number, t: number): void {
+  const n = r > 30 ? 5 : 3;
+  for (let i = 0; i < n; i++) {
+    const fx = x + (i - (n - 1) / 2) * r * 0.45;
+    const h = r * (0.55 + 0.25 * Math.sin(t * 17 + i * 2.1));
+    const fy = y - r * 0.55;
+    ctx.fillStyle = 'rgba(255,110,30,0.85)';
+    ctx.beginPath();
+    ctx.moveTo(fx - r * 0.18, fy);
+    ctx.quadraticCurveTo(fx - r * 0.2, fy - h * 0.6, fx, fy - h);
+    ctx.quadraticCurveTo(fx + r * 0.2, fy - h * 0.6, fx + r * 0.18, fy);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,220,120,0.9)';
+    ctx.beginPath();
+    ctx.ellipse(fx, fy - h * 0.3, r * 0.07, h * 0.25, 0, 0, TAU);
+    ctx.fill();
+  }
+}
+
+function drawEnemyBody(ctx: Ctx, e: Enemy, x: number, y: number, t: number, dx: number, dy: number): void {
   const r = e.radius;
   const col = e.flash > 0.06 ? '#ffffff' : enemyColor(e);
   if (e.boss) return drawBoss(ctx, e, x, y, t, dx, dy, col);

@@ -54,17 +54,20 @@ function shieldBash(s: GameState, p: Player): void {
   s.events.push({ t: 'shake', v: 8 });
 }
 
+export const METEOR_RANGE = 480;
+
 function meteor(s: GameState, p: Player): void {
   let ax = p.ax, ay = p.ay;
   const len = Math.hypot(ax, ay);
-  if (len > 480) {
-    ax = (ax / len) * 480;
-    ay = (ay / len) * 480;
+  if (len > METEOR_RANGE) {
+    ax = (ax / len) * METEOR_RANGE;
+    ay = (ay / len) * METEOR_RANGE;
   }
   addZone(s, {
     owner: p.id, src: 'ability', kind: 'meteor', x: p.x + ax, y: p.y + ay,
     r: 170 * p.stats.area * (1 + 0.12 * (p.abilityLevel - 1)),
     delay: 0.7, life: 0.5, dmg: 150 * abilityPower(s, p), knock: 500,
+    burn: 30 * abilityPower(s, p), // sets everything hit on fire
   });
 }
 

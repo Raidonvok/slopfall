@@ -3,6 +3,7 @@ import type { GameState, UpgradeOption } from './sim/types';
 import { Sound } from './client/audio';
 import { Input } from './client/input';
 import { TouchControls } from './client/touch';
+import { restore, snapshot } from './sim/save';
 import { CHARACTERS } from './sim/content/characters';
 import { Renderer } from './client/render/renderer';
 import { LOCAL_ID, Session } from './client/session';
@@ -36,27 +37,81 @@ function setScreen(id: ScreenId | null): void {
 
 function runDemo(): void {
   session?.stop();
+  isRealRun = false;
+  refreshContinue();
   const charId = CHARACTER_IDS[Math.floor(Math.random() * CHARACTER_IDS.length)];
   session = new Session(charId, renderer, null, null);
   session.start();
 }
 
-function startGame(charId: string): void {
+// ---------------------------------------------------------------- saved runs
+
+const SAVE_KEY = 'nightfall.run';
+const SAVE_EVERY = 5; // game seconds
+let lastSave = 0;
+
+function readSave(): GameState | null {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    return raw ? restore(JSON.parse(raw)) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSave(): void {
+  const s = session?.state;
+  if (!s || !isRealRun || s.gameOver) return;
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(snapshot(s, Date.now())));
+    lastSave = s.time;
+  } catch {
+    // storage full or blocked: the run just isn't resumable
+  }
+}
+
+function clearSave(): void {
+  try {
+    localStorage.removeItem(SAVE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+/** Shows the Continue button when a resumable run exists. */
+function refreshContinue(): void {
+  const btn = document.getElementById('btn-continue')!;
+  const saved = readSave();
+  btn.classList.toggle('hidden', !saved);
+  if (!saved) return;
+  const p = saved.players[0];
+  const m = Math.floor(saved.time / 60), sec = Math.floor(saved.time % 60);
+  document.getElementById('continue-info')!.textContent =
+    `${CHARACTERS[p.charId].name} · Wave ${saved.wave.n} · Lv ${p.level} · ${m}:${String(sec).padStart(2, '0')}`;
+}
+
+let isRealRun = false;
+
+function startGame(charId: string, saved: GameState | null = null): void {
   lastChar = charId;
   sound.unlock();
   session?.stop();
   shownChoices = null;
+  isRealRun = true;
+  lastSave = saved?.time ?? 0;
+  touch.aimMode = charId === 'mage';
   if (touch.enabled && !document.fullscreenElement) {
     // more screen space on phones; ignored where unsupported (e.g. iOS Safari)
     document.documentElement.requestFullscreen?.().catch(() => {});
   }
   setScreen(null);
-  session = new Session(charId, renderer, input, sound, { onFrame: syncUi, onGameOver: gameOver });
+  session = new Session(charId, renderer, input, sound, { onFrame: syncUi, onGameOver: gameOver }, saved);
   session.start();
 }
 
 function syncUi(s: GameState): void {
   const me = s.players.find((p) => p.id === LOCAL_ID)!;
+  if (s.time - lastSave >= SAVE_EVERY) writeSave();
   if (touch.enabled) {
     touch.setCooldowns(
       me.abilityCd / Math.max(0.01, me.abilityMaxCd),
@@ -76,6 +131,7 @@ function syncUi(s: GameState): void {
 }
 
 function gameOver(s: GameState): void {
+  clearSave();
   buildGameOver(s, s.players[0]);
   setScreen('over');
 }
@@ -85,6 +141,7 @@ function setPaused(p: boolean): void {
   if (p && screen !== null) return;
   session.paused = p;
   if (p) {
+    writeSave();
     buildPause(session.state.players[0]);
     setScreen('pause');
   } else if (screen === 'pause') {
@@ -93,6 +150,7 @@ function setPaused(p: boolean): void {
 }
 
 function toMenu(): void {
+  writeSave(); // a deliberate quit can still be continued later
   setScreen('menu');
   runDemo();
 }
@@ -119,6 +177,16 @@ window.addEventListener('keydown', (e) => {
   if (!inGame()) return;
   if (e.code === 'Escape') setPaused(!session!.paused);
   if (screen === 'levelup' && /^Digit[1-4]$/.test(e.code)) input.choose(Number(e.code.slice(5)) - 1);
+});
+document.getElementById('btn-continue')!.addEventListener('click', () => {
+  const saved = readSave();
+  if (saved) startGame(saved.players[0].charId, saved);
+  else refreshContinue();
+});
+// closing the tab, switching apps or locking the phone saves the run
+window.addEventListener('pagehide', writeSave);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') writeSave();
 });
 window.addEventListener('blur', () => {
   if (inGame() && screen === null) setPaused(true);

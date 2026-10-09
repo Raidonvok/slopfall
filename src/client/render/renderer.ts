@@ -35,6 +35,8 @@ export class Renderer {
 
   /** Phones/tablets: lighter resolution, HUD laid out around the touch controls. */
   touchMode = false;
+  /** Touch aiming: where the ability will land (world coords). */
+  aimPreview: { x: number; y: number; r: number } | null = null;
 
   resize(): void {
     this.dpr = Math.min(this.touchMode ? 1.5 : 2, window.devicePixelRatio || 1);
@@ -102,6 +104,25 @@ export class Renderer {
     }
 
     this.world.drawObstacles(ctx, seed, minX, minY, maxX, maxY);
+    if (this.aimPreview) {
+      const a = this.aimPreview;
+      ctx.fillStyle = 'rgba(255,140,60,0.12)';
+      ctx.beginPath();
+      ctx.arc(a.x, a.y, a.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,190,110,0.9)';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([12, 8]);
+      ctx.lineDashOffset = -t * 40;
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(a.x - 14, a.y);
+      ctx.lineTo(a.x + 14, a.y);
+      ctx.moveTo(a.x, a.y - 14);
+      ctx.lineTo(a.x, a.y + 14);
+      ctx.stroke();
+    }
     this.world.drawLights(ctx, seed, minX, minY, maxX, maxY, t);
 
     // dash afterimages

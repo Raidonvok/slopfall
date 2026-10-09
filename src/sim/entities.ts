@@ -37,7 +37,7 @@ export function spawnEnemy(s: GameState, type: string, x: number, y: number, sca
     elite, boss: !!def.boss, chest: false,
     slowT: 0, slowAmt: 0, flash: 0,
     state: 0, t: 0, t2: 0, t3: 0, tx: 0, ty: 0, sx: 0, sy: 0, ang: 0, dmgAcc: 0,
-    intangible: false, trail: [], dead: false,
+    intangible: false, trail: [], burnT: 0, burnDps: 0, burnTick: 0, burnOwner: '', dead: false,
   };
   if (!ignoresObstacles(type)) resolveObstacles(s.mapSeed, e, e.radius);
   e.px = e.x;
@@ -71,7 +71,7 @@ export function addProjectile(s: GameState, init: Partial<Projectile> & Pick<Pro
 export function addZone(s: GameState, init: Partial<Zone> & Pick<Zone, 'owner' | 'src' | 'kind' | 'x' | 'y' | 'r'>): Zone {
   const z: Zone = {
     id: nextId(s), r0: init.r, life: 0.3, maxLife: 0.3, delay: 0, dmg: 0, knock: 0, slow: 0,
-    ang: 0, arc: 0, pts: [], hits: {}, fired: false, dead: false, ...init,
+    ang: 0, arc: 0, pts: [], hits: {}, burn: 0, fired: false, dead: false, ...init,
   };
   z.maxLife = z.life;
   s.zones.push(z);

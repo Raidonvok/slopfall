@@ -1,5 +1,5 @@
 import { ignoresObstacles } from '../content/enemies';
-import { hurtPlayer, killEnemy, waveScale } from '../combat';
+import { hurtPlayer, killEnemy, updateBurn, waveScale } from '../combat';
 import { addEnemyProjectile, nearestPlayer, spawnEnemy } from '../entities';
 import { rand, randRange } from '../rng';
 import { resolveObstacles } from '../map';
@@ -14,6 +14,8 @@ export function updateEnemies(s: GameState, dt: number): void {
   for (const e of s.enemies) {
     if (e.dead) continue;
     e.flash = Math.max(0, e.flash - dt);
+    updateBurn(s, e, dt);
+    if (e.dead) continue;
     e.slowT -= dt;
     e.x += e.kx * dt;
     e.y += e.ky * dt;

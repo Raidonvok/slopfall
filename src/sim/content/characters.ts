@@ -23,7 +23,7 @@ const defs: CharacterDef[] = [
   {
     id: 'mage', name: 'Mage', title: 'Arcane Scholar', color: '#7c5cff', accent: '#6ee7ff',
     hp: 90, speed: 160, weapon: 'bolt', passive: '-15% cooldowns', mods: { cooldown: -0.15 },
-    ability: { name: 'Meteor', desc: 'Calls a meteor down at your cursor, dealing massive area damage.', cd: 10, upgrade: '+25% damage, +12% radius, -6% cooldown' },
+    ability: { name: 'Meteor', desc: 'Calls a meteor down at your cursor, dealing massive area damage and setting enemies on fire.', cd: 10, upgrade: '+25% damage, +12% radius, -6% cooldown' },
   },
   {
     id: 'ranger', name: 'Ranger', title: 'Wind Strider', color: '#4caf50', accent: '#b6ff7a',
@@ -43,7 +43,7 @@ const defs: CharacterDef[] = [
   {
     id: 'berserker', name: 'Berserker', title: 'Blood Reaver', color: '#c0392b', accent: '#ffb347',
     hp: 130, speed: 160, weapon: 'axe', passive: 'Up to +50% damage at low HP', mods: {},
-    ability: { name: 'Rage', desc: '6s: +50% attack speed, +30% damage, lifesteal. Take +25% damage.', cd: 15, upgrade: '+1s duration, +10% rage damage, -6% cooldown' },
+    ability: { name: 'Rage', desc: '6s: +50% attack speed, +30% damage. Take +25% damage.', cd: 15, upgrade: '+1s duration, +10% rage damage, -6% cooldown' },
   },
 ];
 
